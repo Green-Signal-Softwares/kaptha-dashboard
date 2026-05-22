@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kaptha Lead · Dashboard Financeiro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ── CAROUSEL OVERLAY CONTROLS ───────────────────────────────────────────── -->
+<div class="carousel-dots" id="carouselDots">
+  <button class="c-dot active" data-slide="0" title="Metas Kaptha.AI"></button>
+  <button class="c-dot" data-slide="1" title="DRE Gerencial"></button>
+  <button class="c-dot" data-slide="2" title="Clientes Assinados"></button>
+  <button class="c-dot" data-slide="3" title="LTV &amp; Retenção"></button>
+</div>
+<button class="global-refresh-btn" id="globalRefreshBtn" title="Atualizar dados agora">↻</button>
+<div class="carousel-progress-wrap">
+  <div class="carousel-progress-bar" id="carouselProgressBar"></div>
+</div>
+
+<!-- ── CAROUSEL TRACK ───────────────────────────────────────────────────────── -->
+<div class="carousel-wrapper">
+<div class="carousel-track" id="carouselTrack">
+
+  <!-- ════════════════════════════════════════════════════════════════
+       SLIDE 0 · METAS KAPTHA.AI
+       ════════════════════════════════════════════════════════════════ -->
+  <div class="slide" id="slide0">
+
+    <div class="page-header">
+      <div class="brand-area">
+        <div class="logo-wrap">
+          <img src="logo.png" alt="Kaptha.AI" class="logo-img" />
+        </div>
+        <div class="current-month-badge">
+          <span class="badge-dot"></span>
+          <span id="metasMonthLabel">–</span>
+        </div>
+      </div>
+      <div class="page-title-badge">Metas do Mês</div>
+      <div class="refresh-info">
+        <span class="refresh-icon">↻</span>
+        <span id="metasLastUpdate">–</span>
+      </div>
+    </div>
+
+    <div class="metas-content">
+      <div class="metas-grid" id="metasGrid">
+        <!-- Populado pelo dashboard.js -->
+      </div>
+    </div>
+
+    <footer class="footer">
+      <span>Kaptha Lead · Metas Kaptha.AI</span>
+      <span id="metasFooterTime">–</span>
+      <span>Atualização automática a cada 5 minutos</span>
+    </footer>
+  </div><!-- /slide0 metas -->
+
+
+  <!-- ════════════════════════════════════════════════════════════════
+       SLIDE 1 · DRE GERENCIAL
+       ════════════════════════════════════════════════════════════════ -->
+  <div class="slide" id="slide1">
+
+    <!-- BARRA DE FILTROS -->
+    <div class="filter-bar">
+      <div class="brand-area">
+        <div class="logo-wrap">
+          <img src="logo.png" alt="Kaptha.AI" class="logo-img" />
+        </div>
+        <div class="current-month-badge">
+          <span class="badge-dot"></span>
+          <span id="currentMonthLabel">–</span>
+        </div>
+      </div>
+
+      <div class="filter-presets">
+        <span class="filter-label">Período:</span>
+        <button class="filter-btn active" data-preset="ano1">
+          ANO 1 <small>ago/25 – ago/26</small>
+        </button>
+        <button class="filter-btn" data-preset="ano2">
+          ANO 2 <small>set/26 – set/27</small>
+        </button>
+        <button class="filter-btn" data-preset="ambos">
+          AMBOS <small>ago/25 – set/27</small>
+        </button>
+      </div>
+
+      <div class="date-range-group">
+        <span class="filter-label hide-sm">Personalizar:</span>
+        <select id="dateFrom" class="date-select"></select>
+        <span class="date-arrow">→</span>
+        <select id="dateTo" class="date-select"></select>
+      </div>
+
+      <div class="refresh-info">
+        <span class="refresh-icon">↻</span>
+        <span id="lastUpdate">–</span>
+      </div>
+    </div>
+
+    <!-- KPI CARDS -->
+    <section class="kpi-row">
+      <div class="kpi-card">
+        <div class="kpi-label">Faturamento Clientes</div>
+        <div class="kpi-value" id="valReceita">–</div>
+        <div class="kpi-meta" id="metaReceita">mês atual</div>
+        <div class="kpi-bar green"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Custos Totais</div>
+        <div class="kpi-value" id="valCustos">–</div>
+        <div class="kpi-meta">mês atual</div>
+        <div class="kpi-bar red"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Resultado Operacional</div>
+        <div class="kpi-value" id="valResultado">–</div>
+        <div class="kpi-meta">Fat. – Custos · Margem <strong id="valMargem">–</strong></div>
+        <div class="kpi-bar blue"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Resultado Final <span class="kpi-hint">c/ uso do aporte</span></div>
+        <div class="kpi-value" id="valResultadoFinal">–</div>
+        <div class="kpi-meta">linha 105 · considera investimento</div>
+        <div class="kpi-bar purple"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Fluxo de Caixa</div>
+        <div class="kpi-value" id="valFluxo">–</div>
+        <div class="kpi-meta">acumulado até o mês</div>
+        <div class="kpi-bar amber"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Margem Média · Ano 1</div>
+        <div class="kpi-value" id="valMargemAno1">–</div>
+        <div class="kpi-meta">resultado op. / faturamento</div>
+        <div class="kpi-bar teal"></div>
+      </div>
+    </section>
+
+    <!-- METAS ANUAIS -->
+    <section class="meta-section">
+      <div class="meta-card">
+        <div class="meta-header">
+          <div class="meta-title-group">
+            <span class="meta-emoji">📈</span>
+            <div>
+              <div class="meta-title">Faturamento Acumulado · ANO 1</div>
+              <div class="meta-period">ago/25 – ago/26</div>
+            </div>
+          </div>
+          <div class="meta-pct-badge" id="metaBadge1">0%</div>
+        </div>
+        <div class="meta-values-row">
+          <div class="meta-val-item">
+            <div class="meta-val-label">Projetado</div>
+            <div class="meta-val" id="metaProj1">–</div>
+          </div>
+          <div class="meta-val-item">
+            <div class="meta-val-label">Realizado</div>
+            <div class="meta-val green" id="metaReal1">–</div>
+          </div>
+          <div class="meta-val-item">
+            <div class="meta-val-label">Meta</div>
+            <div class="meta-val dim">R$ 1.400.000</div>
+          </div>
+        </div>
+        <div class="progress-track">
+          <div class="progress-proj" id="progressProj1"></div>
+          <div class="progress-real" id="progressReal1"></div>
+        </div>
+        <div class="progress-labels">
+          <span><span id="metaPctReal1">0%</span> realizado · <span id="metaPctProj1">0%</span> projetado</span>
+          <span id="metaFalta1" class="meta-falta">–</span>
+        </div>
+      </div>
+
+      <div class="meta-card">
+        <div class="meta-header">
+          <div class="meta-title-group">
+            <span class="meta-emoji">🚀</span>
+            <div>
+              <div class="meta-title">Faturamento Acumulado · ANO 2</div>
+              <div class="meta-period">set/26 – set/27</div>
+            </div>
+          </div>
+          <div class="meta-pct-badge" id="metaBadge2">0%</div>
+        </div>
+        <div class="meta-values-row">
+          <div class="meta-val-item">
+            <div class="meta-val-label">Projetado</div>
+            <div class="meta-val" id="metaProj2">–</div>
+          </div>
+          <div class="meta-val-item">
+            <div class="meta-val-label">Realizado</div>
+            <div class="meta-val green" id="metaReal2">–</div>
+          </div>
+          <div class="meta-val-item">
+            <div class="meta-val-label">Meta</div>
+            <div class="meta-val dim">R$ 2.800.000</div>
+          </div>
+        </div>
+        <div class="progress-track">
+          <div class="progress-proj" id="progressProj2"></div>
+          <div class="progress-real" id="progressReal2"></div>
+        </div>
+        <div class="progress-labels">
+          <span><span id="metaPctReal2">0%</span> realizado · <span id="metaPctProj2">0%</span> projetado</span>
+          <span id="metaFalta2" class="meta-falta">–</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHARTS -->
+    <section class="charts-row">
+      <div class="chart-card chart-main">
+        <div class="chart-header">
+          <span class="chart-title">Evolução Mensal</span>
+          <div class="chart-legend" id="chartLegend"></div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="evolutionChart"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card chart-pie">
+        <div class="chart-header">
+          <span class="chart-title">Distribuição de Custos</span>
+          <span class="chart-sub" id="pieRangeLabel"></span>
+        </div>
+        <div class="pie-container">
+          <div class="donut-wrap">
+            <canvas id="costPieChart"></canvas>
+          </div>
+          <div class="pie-legend-html" id="pieLegend"></div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span>Kaptha Lead · Plano Orçamentário</span>
+      <span id="footerTime">–</span>
+      <span>Atualização automática a cada 5 minutos</span>
+    </footer>
+  </div><!-- /slide1 DRE -->
+
+
+  <!-- ════════════════════════════════════════════════════════════════
+       SLIDE 2 · CLIENTES ASSINADOS
+       ════════════════════════════════════════════════════════════════ -->
+  <div class="slide" id="slide2">
+
+    <div class="page-header">
+      <div class="brand-area">
+        <div class="logo-wrap">
+          <img src="logo.png" alt="Kaptha.AI" class="logo-img" />
+        </div>
+        <div class="current-month-badge">
+          <span class="badge-dot"></span>
+          <span id="cliMonthLabel">–</span>
+        </div>
+      </div>
+      <div class="page-title-badge">Análise de Clientes</div>
+      <div class="refresh-info">
+        <span class="refresh-icon">↻</span>
+        <span id="cliLastUpdate">–</span>
+      </div>
+    </div>
+
+    <!-- KPIs Clientes -->
+    <section class="kpi-row">
+      <div class="kpi-card">
+        <div class="kpi-label">Clientes Ativos</div>
+        <div class="kpi-value" id="cliQtd">–</div>
+        <div class="kpi-meta">mês atual</div>
+        <div class="kpi-bar green"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Ticket Médio</div>
+        <div class="kpi-value" id="cliTicket">–</div>
+        <div class="kpi-meta">receita média por cliente</div>
+        <div class="kpi-bar blue"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">MRR</div>
+        <div class="kpi-value" id="cliMrr">–</div>
+        <div class="kpi-meta">receita recorrente mensal</div>
+        <div class="kpi-bar teal"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Churn Rate Mensal</div>
+        <div class="kpi-value" id="cliChurn">–</div>
+        <div class="kpi-meta">média do período · (churned/total)/meses</div>
+        <div class="kpi-bar red"></div>
+      </div>
+    </section>
+
+    <!-- Charts Clientes -->
+    <section class="charts-row-cli">
+
+      <div class="chart-card">
+        <div class="chart-header">
+          <span class="chart-title">Ticket Médio Mensal</span>
+          <div class="chart-legend" id="ticketLegend"></div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="ticketMedioChart"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card chart-top10">
+        <div class="chart-header">
+          <span class="chart-title">TOP 10 Clientes</span>
+          <span class="chart-sub">receita acumulada até mês atual</span>
+        </div>
+        <div class="chart-wrap chart-wrap-top10">
+          <canvas id="top10Chart"></canvas>
+        </div>
+      </div>
+
+    </section>
+
+    <footer class="footer">
+      <span>Kaptha Lead · Clientes Assinados</span>
+      <span id="cliFooterTime">–</span>
+      <span>Atualização automática a cada 5 minutos</span>
+    </footer>
+  </div><!-- /slide2 clientes -->
+
+
+  <!-- ════════════════════════════════════════════════════════════════
+       SLIDE 3 · LTV & RETENÇÃO
+       ════════════════════════════════════════════════════════════════ -->
+  <div class="slide" id="slide3">
+
+    <div class="page-header">
+      <div class="brand-area">
+        <div class="logo-wrap">
+          <img src="logo.png" alt="Kaptha.AI" class="logo-img" />
+        </div>
+        <div class="current-month-badge">
+          <span class="badge-dot"></span>
+          <span id="ltvMonthLabel">–</span>
+        </div>
+      </div>
+      <div class="page-title-badge">Lifetime Value</div>
+      <div class="refresh-info">
+        <span class="refresh-icon">↻</span>
+        <span id="ltvLastUpdate">–</span>
+      </div>
+    </div>
+
+    <!-- KPIs LTV -->
+    <section class="kpi-row">
+      <div class="kpi-card">
+        <div class="kpi-label">LTV Médio · Meses</div>
+        <div class="kpi-value" id="ltvMeses">–</div>
+        <div class="kpi-meta">tempo médio de permanência</div>
+        <div class="kpi-bar purple"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">LTV Médio · R$</div>
+        <div class="kpi-value" id="ltvReais">–</div>
+        <div class="kpi-meta">receita média por cliente churned</div>
+        <div class="kpi-bar amber"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Total de Clientes</div>
+        <div class="kpi-value" id="ltvTotal">–</div>
+        <div class="kpi-meta">histórico completo</div>
+        <div class="kpi-bar teal"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Clientes Churned</div>
+        <div class="kpi-value" id="ltvChurned">–</div>
+        <div class="kpi-meta">cancelaram até o mês atual</div>
+        <div class="kpi-bar red"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Ticket Médio Atual</div>
+        <div class="kpi-value" id="ltvTicket">–</div>
+        <div class="kpi-meta">clientes ativos</div>
+        <div class="kpi-bar blue"></div>
+      </div>
+    </section>
+
+    <!-- Charts LTV -->
+    <section class="charts-row-ltv">
+
+      <div class="chart-card">
+        <div class="chart-header">
+          <span class="chart-title">Taxa de Churn Mensal</span>
+          <span class="chart-sub">% clientes perdidos por mês</span>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="churnChart"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-header">
+          <span class="chart-title">LTV por Plano</span>
+          <span class="chart-sub">meses médios de permanência</span>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="ltvPlanoChart"></canvas>
+        </div>
+      </div>
+
+    </section>
+
+    <footer class="footer">
+      <span>Kaptha Lead · LTV &amp; Retenção</span>
+      <span id="ltvFooterTime">–</span>
+      <span>Atualização automática a cada 5 minutos</span>
+    </footer>
+  </div><!-- /slide3 ltv -->
+
+</div><!-- /carousel-track -->
+</div><!-- /carousel-wrapper -->
+
+<div class="error-overlay" id="errorOverlay"></div>
+<script src="dashboard.js"></script>
+</body>
+</html>

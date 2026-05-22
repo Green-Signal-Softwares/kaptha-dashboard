@@ -1,0 +1,13 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "kaptha-dashboard",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["/Users/marceloaugustosouzarocha/kaptha-dashboard/server.js"],
+      "cwd": "/Users/marceloaugustosouzarocha/kaptha-dashboard",
+      "port": 3000,
+      "autoPort": false
+    }
+  ]
+}
