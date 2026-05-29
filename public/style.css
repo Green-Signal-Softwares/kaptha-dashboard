@@ -51,7 +51,7 @@ body {
 .carousel-track {
   display: flex;
   flex-direction: row;
-  width: 400vw;
+  width: 500vw;
   height: 100vh;
   transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -735,22 +735,61 @@ body {
 }
 
 /* ── METAS PAGE ──────────────────────────────────────────────────────────────── */
-.metas-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--gap) clamp(12px, 2vw, 28px);
-  min-height: 0;
+
+/* Barra de filtro de meses */
+.metas-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 7px clamp(12px, 2vw, 28px);
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
-.metas-content::-webkit-scrollbar { width: 4px; }
-.metas-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+.metas-month-pill {
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: transparent;
+  color: var(--text-3);
+  font-size: clamp(10px, 0.65vw, 12px);
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all 0.18s;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.metas-month-pill:hover {
+  border-color: rgba(255,255,255,0.22);
+  color: var(--text-2);
+}
+
+.metas-month-pill.active {
+  background: rgba(16,185,129,0.13);
+  border-color: rgba(16,185,129,0.5);
+  color: var(--green-l);
+}
+
+.metas-content {
+  flex: 1;
+  overflow: hidden;
+  padding: clamp(5px, 0.5vw, 8px) clamp(12px, 2vw, 28px);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 
 .metas-grid {
+  flex: 1;
+  min-height: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(clamp(300px, 30vw, 500px), 1fr));
-  gap: clamp(10px, 1.2vw, 16px);
-  align-content: start;
-  padding-bottom: var(--gap);
+  grid-template-columns: repeat(5, 1fr);
+  grid-auto-rows: 1fr;
+  gap: clamp(5px, 0.55vw, 8px);
 }
 
 .metas-empty {
@@ -766,11 +805,12 @@ body {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: clamp(12px, 1.1vw, 18px) clamp(14px, 1.4vw, 22px);
+  padding: clamp(8px, 0.7vw, 12px) clamp(10px, 1vw, 16px);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 7px;
   transition: border-color .2s;
+  overflow: hidden;
 }
 
 .mic:hover { border-color: var(--border-h); }
@@ -779,9 +819,10 @@ body {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 10px;
-  padding-bottom: 10px;
+  gap: 8px;
+  padding-bottom: 7px;
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .mic-head-main {
@@ -793,15 +834,18 @@ body {
 }
 
 .mic-name {
-  font-size: clamp(13px, 1vw, 16px);
-  font-weight: 700;
-  color: var(--text);
+  font-size: clamp(10px, 0.7vw, 12px);
+  font-weight: 600;
+  color: var(--text-2);
   line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: .04em;
 }
 
 .mic-obj {
-  font-size: clamp(10px, 0.65vw, 12px);
-  color: var(--text-3);
+  font-size: clamp(12px, 0.9vw, 15px);
+  font-weight: 500;
+  color: var(--text);
   line-height: 1.4;
 }
 
@@ -823,7 +867,7 @@ body {
 }
 
 .mic-real-val {
-  font-size: clamp(15px, 1.3vw, 21px);
+  font-size: clamp(12px, 1vw, 16px);
   font-weight: 800;
   color: var(--text);
   letter-spacing: -.02em;
@@ -834,42 +878,44 @@ body {
 .mic-bars {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
+  flex: 1;
+  justify-content: space-evenly;
 }
 
 .mic-bar-row {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .mic-bar-header {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
 .mic-meta-label {
-  font-size: clamp(11px, 0.8vw, 14px);
+  font-size: clamp(9px, 0.65vw, 11px);
   font-weight: 700;
   color: var(--text-2);
   text-transform: uppercase;
   letter-spacing: .04em;
   flex-shrink: 0;
-  min-width: 52px;
+  min-width: 44px;
 }
 
 .mic-alvo-tag {
   flex: 1;
-  font-size: clamp(10px, 0.65vw, 12px);
-  color: var(--text-3);
+  font-size: clamp(11px, 0.85vw, 14px);
+  color: var(--text-2);
 }
 
 .mic-pct {
-  font-size: clamp(14px, 1.2vw, 20px);
+  font-size: clamp(12px, 0.9vw, 15px);
   font-weight: 800;
   flex-shrink: 0;
-  min-width: 52px;
+  min-width: 44px;
   text-align: right;
   letter-spacing: -.02em;
 }
@@ -881,7 +927,7 @@ body {
 .mic-pct.critical { color: var(--red-l); }
 
 .mic-bar-track {
-  height: 10px;
+  height: 7px;
   background: rgba(255,255,255,0.07);
   border-radius: 6px;
   overflow: hidden;
@@ -949,4 +995,313 @@ body {
   html { font-size: 17px; }
   .chart-main .chart-wrap { height: clamp(280px, 26vh, 420px); }
   .donut-wrap { height: clamp(160px, 16vh, 220px); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   OKR — SHARED UTILITIES
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Shared progress bar used in both OKR slides */
+.okr-bar-track {
+  height: 6px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.okr-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.8s ease;
+}
+
+/* Status fills */
+.okr-bar-fill.achieved { background: var(--green); }
+.okr-bar-fill.good     { background: var(--teal); }
+.okr-bar-fill.mid      { background: var(--amber); }
+.okr-bar-fill.low      { background: #f97316; }
+.okr-bar-fill.critical { background: var(--red); }
+
+/* Status text colours (apply to any element) */
+.okr-c-achieved { color: var(--green-l); }
+.okr-c-good     { color: var(--teal); }
+.okr-c-mid      { color: var(--amber-l); }
+.okr-c-low      { color: #fb923c; }
+.okr-c-critical { color: var(--red-l); }
+
+.okr-empty {
+  grid-column: 1 / -1;
+  color: var(--text-3);
+  font-size: 14px;
+  text-align: center;
+  padding: 80px 20px;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   SLIDE 0 · OKR OBJETIVOS  — 3 × 2 big cards, generous whitespace
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.okr-obj-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(8px, 0.8vw, 14px) clamp(16px, 2vw, 32px);
+  overflow: hidden;
+}
+
+.okr-obj-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: clamp(10px, 1vw, 18px);
+}
+
+/* ── Big objective card ──────────────────────────────────────────────────────── */
+.okr-big-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: clamp(18px, 1.6vw, 28px) clamp(20px, 1.8vw, 32px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 0.9vw, 16px);
+  overflow: hidden;
+  transition: border-color 0.2s, transform 0.15s;
+  position: relative;
+}
+
+.okr-big-card:hover {
+  border-color: var(--border-h);
+  transform: translateY(-1px);
+}
+
+/* Coloured left accent bar */
+.okr-big-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 16px; bottom: 16px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--border);
+  transition: background 0.3s;
+}
+.okr-big-card.achieved::before { background: var(--green); }
+.okr-big-card.good::before     { background: var(--teal); }
+.okr-big-card.mid::before      { background: var(--amber); }
+.okr-big-card.low::before      { background: #f97316; }
+.okr-big-card.critical::before { background: var(--red); }
+
+/* Top row: badge + KR count */
+.okr-big-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.okr-big-badge {
+  font-size: clamp(9px, 0.65vw, 11px);
+  font-weight: 800;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  background: var(--bg-card-2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 3px 8px;
+}
+
+.okr-big-kr-count {
+  font-size: clamp(9px, 0.65vw, 11px);
+  color: var(--text-3);
+}
+
+/* Objective name — prominent */
+.okr-big-name {
+  font-size: clamp(14px, 1.15vw, 20px);
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+  flex: 1;
+  min-height: 0;
+  /* Up to 3 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Bottom section: % + bar */
+.okr-big-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.okr-big-pct-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.okr-big-pct {
+  font-size: clamp(28px, 2.6vw, 44px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.okr-big-pct-label {
+  font-size: clamp(9px, 0.65vw, 11px);
+  font-weight: 600;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  align-self: flex-end;
+  padding-bottom: 3px;
+}
+
+/* Thick progress bar for big card */
+.okr-big-bar-track {
+  height: 8px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.okr-big-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.9s ease;
+}
+
+.okr-big-bar-fill.achieved { background: linear-gradient(90deg, var(--green), var(--green-l)); }
+.okr-big-bar-fill.good     { background: linear-gradient(90deg, var(--teal), #22d3ee); }
+.okr-big-bar-fill.mid      { background: linear-gradient(90deg, var(--amber), var(--amber-l)); }
+.okr-big-bar-fill.low      { background: linear-gradient(90deg, #f97316, #fb923c); }
+.okr-big-bar-fill.critical { background: linear-gradient(90deg, var(--red), var(--red-l)); }
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   SLIDE 1 · OKR KEY RESULTS — tabela flat (linha por KR)
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.okr-kr-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(8px, 0.8vw, 14px) clamp(16px, 2vw, 32px);
+  overflow: hidden;
+}
+
+/* Container que recebe o HTML gerado pelo JS */
+.okr-kr-grid {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg-card);
+}
+
+/* ── Tabela ──────────────────────────────────────────────────────────────────── */
+.okr-tbl {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Grid das 4 colunas: KR ocupa o espaço restante */
+.okr-tbl-head,
+.okr-tbl-row {
+  display: grid;
+  grid-template-columns: 1fr clamp(100px, 14vw, 200px) clamp(68px, 6vw, 90px) clamp(78px, 7vw, 100px);
+  align-items: center;
+  gap: 0;
+}
+
+/* Cabeçalho */
+.okr-tbl-head {
+  background: var(--bg-card-2);
+  border-bottom: 2px solid var(--border);
+  flex-shrink: 0;
+  border-radius: 14px 14px 0 0;
+}
+
+.okr-tbl-head > div {
+  padding: clamp(8px, 0.7vw, 12px) clamp(12px, 1vw, 18px);
+  font-size: clamp(8px, 0.58vw, 10px);
+  font-weight: 800;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.okr-tbl-h-pct,
+.okr-tbl-h-acoes { text-align: center; }
+
+/* Corpo da tabela: distribui as linhas igualmente */
+.okr-tbl-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Linha de dados */
+.okr-tbl-row {
+  flex: 1;
+  min-height: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background 0.15s;
+}
+
+.okr-tbl-row:last-child { border-bottom: none; }
+.okr-tbl-row:hover      { background: rgba(255,255,255,0.025); }
+.okr-row-alt            { background: rgba(255,255,255,0.012); }
+.okr-row-alt:hover      { background: rgba(255,255,255,0.03); }
+
+/* Células */
+.okr-tbl-kr,
+.okr-tbl-alvo,
+.okr-tbl-pct,
+.okr-tbl-acoes {
+  padding: 0 clamp(12px, 1vw, 18px);
+  overflow: hidden;
+}
+
+.okr-tbl-kr {
+  font-size: clamp(10px, 0.75vw, 13px);
+  font-weight: 500;
+  color: var(--text-2);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.okr-tbl-alvo {
+  font-size: clamp(10px, 0.72vw, 12px);
+  color: var(--text-3);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.okr-tbl-pct,
+.okr-tbl-acoes {
+  font-size: clamp(12px, 0.95vw, 15px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-align: center;
 }

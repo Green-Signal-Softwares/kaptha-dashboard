@@ -11,6 +11,8 @@ const state = {
   dre: null,
   clientes: null,
   metas: null,
+  okr: null,
+  metasSelectedMonths: [], // [] = usa mês atual por padrão
   range: { from: 0, to: 12 },
   activePreset: 'ano1',
   charts: {},   // keyed by canvas id
@@ -80,6 +82,7 @@ const fmtPct = v => (v == null || isNaN(v)) ? '–' : (v >= 0 ? '+' : '') + v.to
 const fetchDRE      = () => fetch('/api/dre').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
 const fetchClientes = () => fetch('/api/clientes').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
 const fetchMetas    = () => fetch('/api/metas').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
+const fetchOKR      = () => fetch('/api/okr').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
 
 // ── Série no intervalo [from, to] ─────────────────────────────────────────────
 const getInRange = (serie, from, to) => [...serie.ano1, ...serie.ano2].slice(from, to + 1);
@@ -591,21 +594,100 @@ function renderLTVPage(data) {
 //  SLIDE 0 · METAS KAPTHA.AI
 // ─────────────────────────────────────────────────────────────────────────────
 
-function renderMetasPage(data) {
-  const { metadata, items, hasData } = data;
+// Agrega realizado e alvos de múltiplos meses selecionados
+function aggregateMetasForMonths(data, selectedMonths) {
+  const months = selectedMonths.length > 0
+    ? selectedMonths
+    : (data.metadata.currentMonthLabel ? [data.metadata.currentMonthLabel] : []);
 
-  setText('metasMonthLabel', metadata.currentMonthLabel
-    ? `Mês: ${metadata.currentMonthLabel}`
-    : '–');
+  return data.items.map(item => {
+    let totalRealizado = 0;
+    const alvoSums = [0, 0, 0];
+
+    for (const month of months) {
+      const md = item.monthData?.[month];
+      if (!md) continue;
+      totalRealizado += md.realizado || 0;
+      md.metas.forEach((m, i) => { alvoSums[i] += m.alvo || 0; });
+    }
+
+    const calcPct = alvo => alvo > 0
+      ? Math.min(100, Math.round(totalRealizado / alvo * 1000) / 10)
+      : null;
+
+    return {
+      name: item.name,
+      objective: item.objective,
+      realizado: totalRealizado,
+      metas: alvoSums.map(alvo => ({ alvo, progresso: calcPct(alvo) })),
+    };
+  });
+}
+
+// Renderiza as pills de seleção de mês
+function renderMetasMonthFilter(data) {
+  const container = document.getElementById('metasMonthFilter');
+  if (!container) return;
+
+  const months = data.metadata.months || [];
+  if (!months.length) { container.innerHTML = ''; return; }
+
+  const current  = data.metadata.currentMonthLabel;
+  const selected = state.metasSelectedMonths;
+
+  const shortLabel = label => {
+    const parts = label.split('/');
+    if (parts.length !== 2) return label;
+    return parts[0].charAt(0).toUpperCase() + parts[0].slice(1, 3).toLowerCase() + '/' + parts[1].slice(2);
+  };
+
+  container.innerHTML = months.map(month => {
+    const isActive = selected.length === 0
+      ? month === current
+      : selected.includes(month);
+    return `<button class="metas-month-pill${isActive ? ' active' : ''}" data-month="${esc(month)}">${shortLabel(month)}</button>`;
+  }).join('');
+
+  container.querySelectorAll('.metas-month-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const month = btn.dataset.month;
+      const idx = state.metasSelectedMonths.indexOf(month);
+      if (idx >= 0) {
+        state.metasSelectedMonths.splice(idx, 1);
+      } else {
+        state.metasSelectedMonths.push(month);
+      }
+      if (state.metas) renderMetasPage(state.metas);
+    });
+  });
+}
+
+function renderMetasPage(data) {
+  const { metadata } = data;
+
+  // Label do badge de mês
+  const sel = state.metasSelectedMonths;
+  const labelText = sel.length === 0
+    ? (metadata.currentMonthLabel ? `Mês: ${metadata.currentMonthLabel}` : '–')
+    : sel.length === 1
+    ? `Mês: ${sel[0]}`
+    : `${sel.length} meses selecionados`;
+  setText('metasMonthLabel', labelText);
   updateTimestamp(metadata.lastUpdated, ['metasLastUpdate']);
+
+  // Renders das pills de mês
+  renderMetasMonthFilter(data);
 
   const grid = document.getElementById('metasGrid');
   if (!grid) return;
 
-  if (!hasData || !items.length) {
+  if (!data.hasData || !data.items.length) {
     grid.innerHTML = '<div class="metas-empty">Sem dados de metas para o mês atual.<br>Verifique se a aba "METAS KAPTHA.AI" está preenchida.</div>';
     return;
   }
+
+  // Agrega os dados dos meses selecionados
+  const items = aggregateMetasForMonths(data, state.metasSelectedMonths);
 
   const barClass = pct => {
     if (pct === null || pct === 0) return 'critical';
@@ -619,7 +701,6 @@ function renderMetasPage(data) {
   const pctLabel = pct =>
     pct === null ? 'N/A' : pct >= 100 ? '100%' : pct.toFixed(1) + '%';
 
-  // Formata número: pequenos sem R$, grandes com R$
   const fmtMeta = v => {
     if (v == null) return '–';
     if (v === 0)   return '0';
@@ -678,10 +759,131 @@ function renderMetasPage(data) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+//  OKR — SHARED HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+const okrBarCls = pct => {
+  if (pct === null || pct === undefined) return 'critical';
+  if (pct >= 100) return 'achieved';
+  if (pct >= 70)  return 'good';
+  if (pct >= 40)  return 'mid';
+  if (pct >= 15)  return 'low';
+  return 'critical';
+};
+
+const okrPctLbl = pct => (pct === null || pct === undefined) ? '–' : pct.toFixed(1) + '%';
+
+const okrBar = (pct, cls, trackClass = 'okr-bar-track') => {
+  const w = (pct !== null && pct !== undefined) ? Math.min(100, Math.max(0, pct)) : 0;
+  return `<div class="${trackClass}"><div class="okr-bar-fill ${cls}" style="width:${w}%"></div></div>`;
+};
+
+const okrObjBadge = i => i < 5 ? `OBJ ${i + 1}` : 'INFRA';
+
+function okrTimestamp(data) {
+  return new Date(data.metadata.lastUpdated)
+    .toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SLIDE 0 · OKR OBJETIVOS  — big overview cards (30 s)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function renderOKRObjPage(data) {
+  const { objectives, metadata } = data;
+  const t = okrTimestamp(data);
+  setText('okrObjLastUpdate', `atualizado às ${t}`);
+
+  const grid = document.getElementById('okrObjGrid');
+  if (!grid) return;
+
+  if (!data.hasData || !objectives.length) {
+    grid.innerHTML = '<div class="okr-empty">Sem dados de OKR disponíveis.</div>';
+    return;
+  }
+
+  grid.innerHTML = objectives.map((obj, oi) => {
+    const cls      = okrBarCls(obj.progress);
+    const pctText  = okrPctLbl(obj.progress);
+    const krCount  = obj.krs.length;
+    const w        = obj.progress != null ? Math.min(100, Math.max(0, obj.progress)) : 0;
+
+    return `
+      <div class="okr-big-card ${cls}">
+        <div class="okr-big-top">
+          <span class="okr-big-badge">${okrObjBadge(oi)}</span>
+          <span class="okr-big-kr-count">${krCount} KR${krCount !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="okr-big-name">${esc(obj.name)}</div>
+        <div class="okr-big-bottom">
+          <div class="okr-big-pct-row">
+            <span class="okr-big-pct okr-c-${cls}">${pctText}</span>
+            <span class="okr-big-pct-label">progresso geral</span>
+          </div>
+          <div class="okr-big-bar-track">
+            <div class="okr-big-bar-fill ${cls}" style="width:${w}%"></div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SLIDE 1 · OKR KEY RESULTS — tabela plana (60 s)
+//  Colunas: Key Result | Alvo | % KR | % Ações
+// ─────────────────────────────────────────────────────────────────────────────
+
+function renderOKRKrPage(data) {
+  const { objectives, metadata } = data;
+  setText('okrKrLastUpdate', `atualizado às ${okrTimestamp(data)}`);
+
+  const wrap = document.getElementById('okrKrGrid');
+  if (!wrap) return;
+
+  if (!data.hasData || !objectives.length) {
+    wrap.innerHTML = '<div class="okr-empty">Sem dados de OKR disponíveis.</div>';
+    return;
+  }
+
+  // Flatten: one row per KR across all objectives
+  const rows = [];
+  for (const obj of objectives) {
+    for (const kr of obj.krs) {
+      rows.push(kr);
+    }
+  }
+
+  const rowsHtml = rows.map((kr, i) => {
+    const krCls   = okrBarCls(kr.progresso);
+    const acaoCls = okrBarCls(kr.acaoPct);
+    const even    = i % 2 === 1 ? ' okr-row-alt' : '';
+    return `
+      <div class="okr-tbl-row${even}">
+        <div class="okr-tbl-kr">${esc(kr.name)}</div>
+        <div class="okr-tbl-alvo">${kr.alvo ? esc(kr.alvo) : '–'}</div>
+        <div class="okr-tbl-pct okr-c-${krCls}">${okrPctLbl(kr.progresso)}</div>
+        <div class="okr-tbl-acoes okr-c-${acaoCls}">${okrPctLbl(kr.acaoPct)}</div>
+      </div>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <div class="okr-tbl">
+      <div class="okr-tbl-head">
+        <div class="okr-tbl-h-kr">Key Result</div>
+        <div class="okr-tbl-h-alvo">Alvo</div>
+        <div class="okr-tbl-h-pct">% KR</div>
+        <div class="okr-tbl-h-acoes">% Ações</div>
+      </div>
+      <div class="okr-tbl-body">${rowsHtml}</div>
+    </div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 //  CAROUSEL
 // ─────────────────────────────────────────────────────────────────────────────
 
-const CAROUSEL_INTERVAL = 30000; // 30 s
+// Per-slide durations (ms): todas as telas = 60s
+const SLIDE_INTERVALS = [60000, 60000, 60000, 60000, 60000];
 let carouselIndex   = 0;
 let carouselTimer   = null;
 let progressTimer   = null;
@@ -700,11 +902,20 @@ function goToSlide(idx) {
   dots().forEach((d, i) => d.classList.toggle('active', i === carouselIndex));
 
   // Re-render pages when they become visible (ensures chart sizing)
-  if (carouselIndex === 0 && state.metas)    renderMetasPage(state.metas);
-  if (carouselIndex === 2 && state.clientes) renderClientesPage(state.clientes);
-  if (carouselIndex === 3 && state.clientes) renderLTVPage(state.clientes);
+  if (carouselIndex === 0 && state.okr)      renderOKRObjPage(state.okr);
+  if (carouselIndex === 1 && state.okr)      renderOKRKrPage(state.okr);
+  if (carouselIndex === 2 && state.metas)    renderMetasPage(state.metas);
+  if (carouselIndex === 4 && state.clientes) renderClientesPage(state.clientes);
+
+  // Re-arm the auto-advance timer with this slide's duration
+  clearInterval(carouselTimer);
+  carouselTimer = setInterval(() => goToSlide(carouselIndex + 1), currentInterval());
 
   resetProgress();
+}
+
+function currentInterval() {
+  return SLIDE_INTERVALS[carouselIndex] || 60000;
 }
 
 function resetProgress() {
@@ -713,14 +924,14 @@ function resetProgress() {
   bar().style.width = '0%';
   progressTimer = setInterval(() => {
     const elapsed = Date.now() - progressStart;
-    const pct     = Math.min((elapsed / CAROUSEL_INTERVAL) * 100, 100);
+    const pct     = Math.min((elapsed / currentInterval()) * 100, 100);
     bar().style.width = pct + '%';
   }, 100);
 }
 
 function startCarousel() {
   clearInterval(carouselTimer);
-  carouselTimer = setInterval(() => goToSlide(carouselIndex + 1), CAROUSEL_INTERVAL);
+  carouselTimer = setInterval(() => goToSlide(carouselIndex + 1), currentInterval());
   resetProgress();
 }
 
@@ -729,9 +940,9 @@ function setupCarousel() {
     dot.addEventListener('click', () => {
       const idx = parseInt(dot.dataset.slide);
       goToSlide(idx);
-      // Restart timer after manual navigation
+      // Restart timer with the new slide's interval
       clearInterval(carouselTimer);
-      carouselTimer = setInterval(() => goToSlide(carouselIndex + 1), CAROUSEL_INTERVAL);
+      carouselTimer = setInterval(() => goToSlide(carouselIndex + 1), currentInterval());
     });
   });
 }
@@ -805,11 +1016,15 @@ async function refreshAll() {
       fetch('/api/clientes?force=1').then(r => { if (!r.ok) throw new Error(`Clientes ${r.status}`); return r.json(); }).then(data => {
         state.clientes = data;
         renderClientesPage(data);
-        renderLTVPage(data);
       }),
       fetch('/api/metas?force=1').then(r => { if (!r.ok) throw new Error(`Metas ${r.status}`); return r.json(); }).then(data => {
         state.metas = data;
         renderMetasPage(data);
+      }),
+      fetch('/api/okr?force=1').then(r => { if (!r.ok) throw new Error(`OKR ${r.status}`); return r.json(); }).then(data => {
+        state.okr = data;
+        renderOKRObjPage(data);
+        renderOKRKrPage(data);
       }),
     ]);
     hideError();
@@ -847,10 +1062,7 @@ async function loadClientes() {
   try {
     const data     = await fetchClientes();
     state.clientes = data;
-    // Renderiza imediatamente (mesmo que slide não esteja visível — Chart.js
-    // aguenta pois elementos têm layout mesmo fora da viewport visible)
     renderClientesPage(data);
-    renderLTVPage(data);
   } catch (err) {
     console.error('[Clientes]', err);
   }
@@ -866,12 +1078,24 @@ async function loadMetas() {
   }
 }
 
+async function loadOKR() {
+  try {
+    const data = await fetchOKR();
+    state.okr  = data;
+    renderOKRObjPage(data);
+    renderOKRKrPage(data);
+  } catch (err) {
+    console.error('[OKR]', err);
+  }
+}
+
 function updateFooterClock() {
   const t = new Date().toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
-  setText('footerTime',      t);
-  setText('metasFooterTime', t);
-  setText('cliFooterTime',   t);
-  setText('ltvFooterTime',   t);
+  setText('footerTime',       t);
+  setText('metasFooterTime',  t);
+  setText('cliFooterTime',    t);
+  setText('okrObjFooterTime', t);
+  setText('okrKrFooterTime',  t);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -884,9 +1108,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupRefreshBtn();
   startCarousel();
 
-  await Promise.all([loadDRE(), loadClientes(), loadMetas()]);
+  await Promise.all([loadDRE(), loadClientes(), loadMetas(), loadOKR()]);
 
-  setInterval(() => { loadDRE(); loadClientes(); loadMetas(); }, 5 * 60 * 1000);
+  setInterval(() => { loadDRE(); loadClientes(); loadMetas(); loadOKR(); }, 5 * 60 * 1000);
 
   updateFooterClock();
   setInterval(updateFooterClock, 1000);

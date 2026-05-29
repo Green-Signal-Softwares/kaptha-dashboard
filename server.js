@@ -5,12 +5,14 @@ const { google } = require('googleapis');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const SPREADSHEET_ID = '1zgf41qe7eIMj6jYKVoGZQB7J_mVcvRHXG7tIxvLSFEs';
+const SPREADSHEET_ID     = '1zgf41qe7eIMj6jYKVoGZQB7J_mVcvRHXG7tIxvLSFEs';
+const OKR_SPREADSHEET_ID = '1OYYQXdYWIex7sIGM4rIBVMAmaR1tndtaq85utYqL-5o';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
 let dreCache      = { data: null, ts: 0 };
 let clientesCache = { data: null, ts: 0 };
 let metasCache    = { data: null, ts: 0 };
+let okrCache      = { data: null, ts: 0 };
 
 // ─── Utilitários ──────────────────────────────────────────────────────────────
 
@@ -407,85 +409,63 @@ async function fetchMetas() {
   });
   const sheets = google.sheets({ version: 'v4', auth: await auth.getClient() });
 
+  const EMPTY = { metadata: { lastUpdated: new Date().toISOString(), currentMonthLabel: '', months: [] }, items: [], hasData: false };
+
   let res;
   try {
     res = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
       range: "'METAS KAPTHA.AI'!A1:ZZ300",
     });
-  } catch {
-    return { metadata: { lastUpdated: new Date().toISOString(), currentMonthLabel: '' }, items: [], hasData: false };
-  }
+  } catch { return EMPTY; }
 
   const rows = res.data.values || [];
-  if (!rows.length) return { metadata: { lastUpdated: new Date().toISOString(), currentMonthLabel: '' }, items: [], hasData: false };
+  if (!rows.length) return EMPTY;
 
-  // ── Mês atual ─────────────────────────────────────────────────────────────
+  const nrm = s => String(s || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  const YEAR_RE = /20\d\d/;
+
+  // ── Encontra TODOS os blocos de mês (uma coluna REALIZADO por mês) ─────────
+  // Estrutura por mês: 7 colunas
+  //   +0 → REALIZADO  |  +1 → META1 ALVO  |  +2 → META1 PCT (ignorado)
+  //   +3 → META2 ALVO |  +4 → META2 PCT   |  +5 → META3 ALVO | +6 → META3 PCT
+  const headerRow0 = rows[0] || [];
+  const monthBlocks = []; // { label: "MAIO/2026", realCol: N }
+
+  for (let ci = 0; ci < headerRow0.length; ci++) {
+    const v = String(headerRow0[ci] || '').trim();
+    if (!v) continue;
+    const nu = nrm(v);
+    if (!nu.includes('REALIZADO')) continue;
+    if (!YEAR_RE.test(v)) continue;
+    const label = v.replace(/REALIZADO\s*(META)?\s*/i, '').trim();
+    if (label) monthBlocks.push({ label, realCol: ci });
+  }
+  monthBlocks.sort((a, b) => a.realCol - b.realCol);
+
+  // ── Mês atual (para highlight padrão) ─────────────────────────────────────
   const now = new Date();
   const cy = now.getFullYear(), cm = now.getMonth() + 1;
   const PT_SHORT = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
   const PT_FULL  = ['JANEIRO','FEVEREIRO','MARCO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
   const mShort = PT_SHORT[cm - 1];
   const mFull  = PT_FULL[cm - 1];
-  const yFull  = String(cy);
-  const yShort = String(cy).slice(2);
 
-  const nrm = s => String(s || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
-  const matchMonth = c => {
-    const n = nrm(c);
-    return (n.includes(mShort) || n.includes(mFull)) && (n.includes(yFull) || n.includes(yShort));
+  const matchMonthLabel = label => {
+    const n = nrm(label);
+    return (n.includes(mShort) || n.includes(mFull)) &&
+           (n.includes(String(cy)) || n.includes(String(cy).slice(2)));
   };
 
-  // ── Estrutura da planilha (confirmada):
-  // Linha 1: "REALIZADO META MÊS/ANO" | "META 1 MÊS/ANO" | "" | "META 2 MÊS/ANO" | "" | "META 3 MÊS/ANO" | "" | (próximo mês...)
-  // Linha 2: "PROJETO" | "OBJETIVO" | "REALIZADO" | "VALOR ALVO" | "PROGRESSO" | "VALOR ALVO" | "PROGRESSO" | "VALOR ALVO" | "PROGRESSO" | ...
-  // Linhas 3+: dados
-  //
-  // Por mês: 7 colunas
-  //   offset 0 → REALIZADO
-  //   offset 1 → META1 ALVO
-  //   offset 2 → META1 PROGRESSO (calculado na planilha – ignoramos, recalculamos)
-  //   offset 3 → META2 ALVO
-  //   offset 4 → META2 PROGRESSO
-  //   offset 5 → META3 ALVO
-  //   offset 6 → META3 PROGRESSO
+  const currentMonthLabel =
+    monthBlocks.find(mb => matchMonthLabel(mb.label))?.label ||
+    monthBlocks[monthBlocks.length - 1]?.label ||
+    `${mFull.charAt(0)}${mFull.slice(1).toLowerCase()}/${cy}`;
 
-  // ── Encontra a coluna REALIZADO do mês atual ──────────────────────────────
-  let realCol = null;
-  let currentMonthLabel = `${mFull.charAt(0)}${mFull.slice(1).toLowerCase()}/${cy}`;
+  // Fallback se não encontrou nenhum bloco
+  if (monthBlocks.length === 0) monthBlocks.push({ label: currentMonthLabel, realCol: 2 });
 
-  const headerRow0 = rows[0] || [];
-  for (let ci = 0; ci < headerRow0.length; ci++) {
-    const v = String(headerRow0[ci] || '').trim();
-    if (!v || !matchMonth(v)) continue;
-    const nu = nrm(v);
-    // Preferir célula que contém "REALIZADO" (ex: "REALIZADO META MAIO/2026")
-    if (nu.includes('REALIZADO')) {
-      realCol = ci;
-      currentMonthLabel = v
-        .replace(/REALIZADO\s*(META)?\s*/i, '')
-        .trim();
-      break;
-    }
-  }
-
-  // Fallback: busca qualquer célula com mês (ex: "META 1 MAIO/2026") e subtrai 1
-  if (realCol === null) {
-    for (let ci = 0; ci < headerRow0.length; ci++) {
-      const v = String(headerRow0[ci] || '').trim();
-      if (!v || !matchMonth(v)) continue;
-      realCol = Math.max(2, ci - 1);
-      currentMonthLabel = v.replace(/META\s*\d+\s*/i, '').trim();
-      break;
-    }
-  }
-
-  if (realCol === null) realCol = 2; // último fallback: coluna C
-
-  // Limpa label (remove eventuais prefixos residuais)
-  if (!currentMonthLabel) currentMonthLabel = `${mFull.charAt(0)}${mFull.slice(1).toLowerCase()}/${cy}`;
-
-  // ── Dados começam na linha 3 (índice 2) ───────────────────────────────────
+  // ── Projetos (linha 3+, índice 2+) ────────────────────────────────────────
   const DATA_START = 2;
   const SKIP_DATA  = ['TOTAL','SUBTOTAL','MEDIA','MÉDIA','SOMA','RESUMO','CONTROLE','PROJETO','OBJETIVO'];
   const items = [];
@@ -495,39 +475,179 @@ async function fetchMetas() {
     if (!row || !row[0]) continue;
     const name = String(row[0]).trim();
     if (name.length < 2) continue;
-    const nu = nrm(name);
-    if (SKIP_DATA.some(k => nu.startsWith(k))) continue;
+    if (SKIP_DATA.some(k => nrm(name).startsWith(k))) continue;
 
     const objective = String(row[1] || '').trim();
 
-    // Lê realizado e alvos
-    const realizado = parseValue(String(row[realCol]     || ''));
-    const alvo1     = parseValue(String(row[realCol + 1] || ''));
-    const alvo2     = parseValue(String(row[realCol + 3] || ''));
-    const alvo3     = parseValue(String(row[realCol + 5] || ''));
+    // Constrói monthData para todos os meses detectados
+    const monthData = {};
+    for (const mb of monthBlocks) {
+      const realizado = parseValue(String(row[mb.realCol]     || ''));
+      const alvo1     = parseValue(String(row[mb.realCol + 1] || ''));
+      const alvo2     = parseValue(String(row[mb.realCol + 3] || ''));
+      const alvo3     = parseValue(String(row[mb.realCol + 5] || ''));
 
-    // Calcula progresso: min(100, realizado / alvo × 100)
-    // Se realizado >= alvo2, então meta1 e meta2 estão em 100% automaticamente
-    const calcPct = alvo => alvo > 0
-      ? Math.min(100, Math.round(realizado / alvo * 1000) / 10)  // 1 casa decimal
-      : null;
+      const calcPct = alvo => alvo > 0
+        ? Math.min(100, Math.round(realizado / alvo * 1000) / 10)
+        : null;
 
-    const metas = [
-      { alvo: alvo1, progresso: calcPct(alvo1) },
-      { alvo: alvo2, progresso: calcPct(alvo2) },
-      { alvo: alvo3, progresso: calcPct(alvo3) },
-    ];
+      monthData[mb.label] = {
+        realizado,
+        metas: [
+          { alvo: alvo1, progresso: calcPct(alvo1) },
+          { alvo: alvo2, progresso: calcPct(alvo2) },
+          { alvo: alvo3, progresso: calcPct(alvo3) },
+        ],
+      };
+    }
 
-    // Filtra linhas sem nenhum alvo definido para o mês atual
-    if (!alvo1 && !alvo2 && !alvo3 && !realizado) continue;
-
-    items.push({ name, objective, realizado, metas });
+    // Exibe sempre — mesmo linhas zeradas (solicitado pelo usuário)
+    items.push({ name, objective, monthData });
   }
 
   return {
-    metadata: { lastUpdated: new Date().toISOString(), currentMonthLabel },
+    metadata: {
+      lastUpdated: new Date().toISOString(),
+      currentMonthLabel,
+      months: monthBlocks.map(mb => mb.label),
+    },
     items,
     hasData: items.length > 0,
+  };
+}
+
+// ─── OKR Tracker ─────────────────────────────────────────────────────────────
+
+async function fetchOKR() {
+  const auth = new google.auth.GoogleAuth({
+    keyFile: path.join(__dirname, 'credentials.json'),
+    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+  });
+  const client = await auth.getClient();
+  const sheets = google.sheets({ version: 'v4', auth: client });
+
+  const EMPTY = { metadata: { lastUpdated: new Date().toISOString() }, objectives: [], hasData: false };
+
+  // Get actual tab names from spreadsheet metadata
+  let tabs;
+  try {
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: OKR_SPREADSHEET_ID });
+    tabs = meta.data.sheets.map(s => s.properties.title);
+  } catch (e) {
+    console.error('[OKR meta]', e.message);
+    return EMPTY;
+  }
+  if (!tabs || !tabs.length) return EMPTY;
+
+  // ── 1. Dashboard tab (tabs[0]): objectives + overall progress ─────────────
+  let dashRows = [];
+  try {
+    const dashRes = await sheets.spreadsheets.values.get({
+      spreadsheetId: OKR_SPREADSHEET_ID,
+      range: `'${tabs[0]}'!A1:Z30`,
+    });
+    dashRows = dashRes.data.values || [];
+  } catch (e) {
+    console.error('[OKR dash]', e.message);
+  }
+
+  // Objectives appear in rows 10-15 (0-indexed 9-14): col[1]=name, col[2]=progress%
+  const dashObjectives = [];
+  for (let ri = 9; ri <= 15; ri++) {
+    const row = dashRows[ri];
+    if (!row) continue;
+    const name = String(row[1] || '').trim();
+    if (!name || name.length < 3) continue;
+    dashObjectives.push({ name, progress: parseProgresso(String(row[2] || '')) });
+  }
+
+  // ── 2. OBJ tabs (tabs[1..N]): parse KRs ───────────────────────────────────
+  const objectives = [];
+
+  for (let ti = 1; ti < tabs.length; ti++) {
+    const tabName = tabs[ti];
+    const dashObj = dashObjectives[ti - 1] || null;
+
+    // Human-readable display name
+    const displayName = dashObj?.name ||
+      tabName.replace(/^OBJ\s+\d+\s*[–—-]\s*/u, '').replace(/^🔧\s*/u, '').trim();
+
+    let tabRows = [];
+    try {
+      const tabRes = await sheets.spreadsheets.values.get({
+        spreadsheetId: OKR_SPREADSHEET_ID,
+        range: `'${tabName}'!A1:H120`,
+      });
+      tabRows = tabRes.data.values || [];
+    } catch (e) {
+      console.error(`[OKR ${tabName}]`, e.message);
+    }
+
+    // ── Parse KRs: each starts with a row where col[1] contains 📌 ──────────
+    const krs = [];
+    for (let ri = 0; ri < tabRows.length; ri++) {
+      const row = tabRows[ri];
+      if (!row) continue;
+      const col1 = String(row[1] || '').trim();
+      if (!col1.includes('📌')) continue;
+
+      const krName = col1.replace(/📌\s*/gu, '').trim();
+      if (!krName) continue;
+
+      let alvo = null, atual = null, progresso = null, acaoPct = null;
+
+      // Data row at ri+2: col[3]=alvo, col[4]=atual, col[5]=progress%
+      const dataRow = tabRows[ri + 2];
+      if (dataRow) {
+        const dc1 = String(dataRow[1] || '').trim().toUpperCase();
+        const c3  = String(dataRow[3] || '').trim();
+        const c4  = String(dataRow[4] || '').trim();
+        const c5  = String(dataRow[5] || '').trim();
+        // Only use if it's not a RESP/action/header row
+        if (!dc1.includes('RESP') && !dc1.includes('PROGRESSO') &&
+            c3 !== 'Alvo' && c3 !== 'ALVO' && c3 !== '#') {
+          if (c3 || c4 || c5) {
+            alvo      = c3 || null;
+            atual     = c4 || null;
+            progresso = parseProgresso(c5);
+          }
+        }
+      }
+
+      // Scan ri+1 to ri+8 for action-progress row ("Progresso das ações")
+      for (let si = ri + 1; si < Math.min(ri + 9, tabRows.length); si++) {
+        const sr = tabRows[si];
+        if (!sr) continue;
+        // Stop at the next KR block
+        if (si > ri + 1 && String(sr[1] || '').includes('📌')) break;
+
+        const sc1 = String(sr[1] || '').trim().toLowerCase();
+        if (sc1.includes('progresso das a')) {
+          const c3 = String(sr[3] || '').trim();
+          const c4 = String(sr[4] || '').trim();
+          let p = parseProgresso(c3);
+          if (p === null) {
+            p = parseProgresso(c4.replace(/[░█▒▓\s]/g, ''));
+          }
+          acaoPct = p;
+          break;
+        }
+      }
+
+      krs.push({ name: krName, alvo, atual, progresso, acaoPct });
+    }
+
+    objectives.push({
+      name:     displayName,
+      progress: dashObj?.progress ?? null,
+      krs,
+    });
+  }
+
+  return {
+    metadata:   { lastUpdated: new Date().toISOString() },
+    objectives,
+    hasData:    objectives.length > 0,
   };
 }
 
@@ -571,6 +691,20 @@ app.get('/api/metas', async (req, res) => {
     res.json(metasCache.data);
   } catch (err) {
     console.error('[Metas]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/okr', async (req, res) => {
+  const now = Date.now();
+  const force = req.query.force === '1';
+  if (!force && okrCache.data && now - okrCache.ts < CACHE_TTL) return res.json(okrCache.data);
+  try {
+    okrCache.data = await fetchOKR();
+    okrCache.ts = now;
+    res.json(okrCache.data);
+  } catch (err) {
+    console.error('[OKR]', err.message);
     res.status(500).json({ error: err.message });
   }
 });
