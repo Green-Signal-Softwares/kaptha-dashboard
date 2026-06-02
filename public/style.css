@@ -51,7 +51,7 @@ body {
 .carousel-track {
   display: flex;
   flex-direction: row;
-  width: 500vw;
+  width: 600vw;
   height: 100vh;
   transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -623,6 +623,11 @@ body {
   white-space: nowrap;
 }
 
+/* Legenda maior no gráfico de Evolução Mensal */
+#chartLegend .legend-item {
+  font-size: clamp(11px, 0.85vw, 14px);
+}
+
 .legend-dot {
   width: 7px; height: 7px;
   border-radius: 2px;
@@ -1040,7 +1045,50 @@ body {
 
 
 /* ══════════════════════════════════════════════════════════════════════════════
-   SLIDE 0 · OKR OBJETIVOS  — 3 × 2 big cards, generous whitespace
+   SLIDE 0 · BI 2026  — 2 × 2 grid de gráficos
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.bi-content {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 2fr 1.5fr 1.6fr;
+  gap: clamp(5px, 0.55vw, 8px);
+  padding: clamp(5px, 0.5vw, 8px) clamp(12px, 2vw, 28px);
+}
+
+/* Gráficos que ocupam a largura total */
+.bi-chart-full {
+  grid-column: 1 / -1;
+}
+
+/* KPI chips com médias dos últimos 3 meses */
+.bi-kpi-strip {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  margin-bottom: 4px;
+}
+
+.bi-kpi-chip {
+  font-size: clamp(9px, 0.63vw, 11px);
+  color: var(--text-3);
+  background: var(--bg-card-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+
+.bi-kpi-chip strong {
+  color: var(--text-2);
+  font-weight: 700;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   SLIDE 1 · OKR OBJETIVOS  — 3 × 2 big cards, generous whitespace
    ══════════════════════════════════════════════════════════════════════════════ */
 
 .okr-obj-content {
@@ -1226,7 +1274,7 @@ body {
 .okr-tbl-head,
 .okr-tbl-row {
   display: grid;
-  grid-template-columns: 1fr clamp(100px, 14vw, 200px) clamp(68px, 6vw, 90px) clamp(78px, 7vw, 100px);
+  grid-template-columns: 1fr clamp(110px, 14vw, 200px) clamp(68px, 6vw, 90px);
   align-items: center;
   gap: 0;
 }
@@ -1248,8 +1296,7 @@ body {
   letter-spacing: 0.08em;
 }
 
-.okr-tbl-h-pct,
-.okr-tbl-h-acoes { text-align: center; }
+.okr-tbl-h-pct { text-align: center; }
 
 /* Corpo da tabela: distribui as linhas igualmente */
 .okr-tbl-body {
@@ -1277,7 +1324,7 @@ body {
 .okr-tbl-kr,
 .okr-tbl-alvo,
 .okr-tbl-pct,
-.okr-tbl-acoes {
+.okr-tbl-resp {
   padding: 0 clamp(12px, 1vw, 18px);
   overflow: hidden;
 }
@@ -1292,16 +1339,25 @@ body {
 }
 
 .okr-tbl-alvo {
-  font-size: clamp(10px, 0.72vw, 12px);
-  color: var(--text-3);
+  font-size: clamp(14px, 1.1vw, 18px);
+  font-weight: 700;
+  color: var(--text);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-.okr-tbl-pct,
-.okr-tbl-acoes {
+.okr-tbl-pct {
   font-size: clamp(12px, 0.95vw, 15px);
   font-weight: 800;
   letter-spacing: -0.02em;
   text-align: center;
+}
+
+.okr-tbl-resp {
+  font-size: clamp(10px, 0.75vw, 13px);
+  font-weight: 500;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

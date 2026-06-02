@@ -12,6 +12,7 @@ const state = {
   clientes: null,
   metas: null,
   okr: null,
+  bi: null,
   metasSelectedMonths: [], // [] = usa mês atual por padrão
   range: { from: 0, to: 12 },
   activePreset: 'ano1',
@@ -83,6 +84,7 @@ const fetchDRE      = () => fetch('/api/dre').then(r => { if (!r.ok) throw new E
 const fetchClientes = () => fetch('/api/clientes').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
 const fetchMetas    = () => fetch('/api/metas').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
 const fetchOKR      = () => fetch('/api/okr').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
+const fetchBI       = () => fetch('/api/bi').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
 
 // ── Série no intervalo [from, to] ─────────────────────────────────────────────
 const getInRange = (serie, from, to) => [...serie.ano1, ...serie.ano2].slice(from, to + 1);
@@ -356,10 +358,18 @@ function renderClientesPage(data) {
 
   const churnEl = document.getElementById('cliChurn');
   if (churnEl) {
-    const cr = summary.churnRateMensal;
+    // Usa média de churn da aba BI 2026 quando disponível
+    const cr = (state.bi?.ratios?.avgChurn !== null && state.bi?.ratios?.avgChurn !== undefined)
+      ? state.bi.ratios.avgChurn
+      : summary.churnRateMensal;
     churnEl.textContent = cr.toFixed(2) + '%';
     churnEl.className   = 'kpi-value ' + (cr > 5 ? 'negative' : cr > 2 ? '' : 'positive');
   }
+
+  // LTV KPIs
+  const { ltv } = data;
+  setText('cliLtvReais',  ltv.reais  !== null ? fmt(ltv.reais)              : 'N/A');
+  setText('cliLtvMeses',  ltv.meses  !== null ? ltv.meses.toFixed(1) + ' m' : 'N/A');
 
   updateTimestamp(metadata.lastUpdated, ['cliLastUpdate']);
 
@@ -786,7 +796,146 @@ function okrTimestamp(data) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  SLIDE 0 · OKR OBJETIVOS  — big overview cards (30 s)
+//  SLIDE 0 · BI 2026
+// ─────────────────────────────────────────────────────────────────────────────
+
+function renderBIPage(data) {
+  const { labels, financials, ratios, contratos, metadata } = data;
+  setText('biLastUpdate', `atualizado às ${new Date(metadata.lastUpdated).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`);
+  if (!data.hasData) return;
+
+  // ── Helpers compartilhados ─────────────────────────────────────────────────
+  const FIN_COLORS = [C.green, C.teal, C.red, C.amber, C.blue];
+
+  const lineDs = (label, vals, color, extra = {}) => ({
+    label, data: vals,
+    borderColor: color, backgroundColor: color + '14',
+    borderWidth: 2.5, pointRadius: 5, pointHoverRadius: 8,
+    tension: 0.2, fill: false,
+    ...extra,
+  });
+
+  const dlOpts = (color, alignV = 'top', suf = '', sz = 11) => ({
+    display: true,
+    anchor: 'end', align: alignV, offset: 4, clamp: true,
+    font: { size: sz, weight: '700' }, color,
+    formatter: v => (v !== null && v !== undefined) ? v + suf : '',
+  });
+
+  const baseOpts = (scales, tipCb) => ({
+    responsive: true, maintainAspectRatio: false,
+    layout: { padding: { top: 22, right: 8 } },
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: false }, datalabels: { display: false },
+      tooltip: {
+        backgroundColor: '#0f1623', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, padding: 9,
+        titleFont: { size: 11, weight: '600' }, bodyFont: { size: 11 },
+        callbacks: { label: tipCb },
+      },
+    },
+    scales,
+  });
+
+  const xSc  = { grid: { color: C.grid }, ticks: { font: { size: 10 }, maxRotation: 0 } };
+  const ySc  = { grid: { color: C.grid }, ticks: { font: { size: 10 } } };
+
+  const mkLeg = (id, datasets) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = datasets.map(ds =>
+      `<div class="legend-item"><div class="legend-dot" style="background:${ds.borderColor}"></div><span>${ds.label}</span></div>`
+    ).join('');
+  };
+
+  // ── 1 · Financeiro Mensal ──────────────────────────────────────────────────
+  const finDs = financials.map((f, i) => ({
+    ...lineDs(f.name, f.values, FIN_COLORS[i], { fill: i === 0, backgroundColor: FIN_COLORS[i] + (i === 0 ? '10' : '00') }),
+    datalabels: { ...dlOpts(FIN_COLORS[i]), formatter: v => fmtShort(v) },
+  }));
+
+  makeChart('biFinChart', {
+    type: 'line', data: { labels, datasets: finDs },
+    options: baseOpts(
+      { x: xSc, y: { ...ySc, ticks: { ...ySc.ticks, callback: v => fmtShort(v) } } },
+      ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}`
+    ),
+  });
+  mkLeg('biFinLegend', finDs);
+
+  // ── 2 · Índice de Liquidez ────────────────────────────────────────────────
+  const liqDs = [{
+    ...lineDs('Índice de Liquidez', ratios.liquidez, C.blue, { fill: true, backgroundColor: 'rgba(59,130,246,0.08)' }),
+    datalabels: { ...dlOpts(C.blueL, 'top', '', 11), formatter: v => (v !== null && v !== undefined) ? v.toFixed(2) : '' },
+  }];
+
+  makeChart('biLiqChart', {
+    type: 'line', data: { labels, datasets: liqDs },
+    options: baseOpts(
+      { x: xSc, y: { ...ySc, ticks: { ...ySc.ticks, callback: v => v.toFixed(2) } } },
+      ctx => ` Liquidez: ${ctx.raw !== null ? ctx.raw.toFixed(2) : '–'}`
+    ),
+  });
+
+  // KPI médias
+  const kpiEl = document.getElementById('biLiqKPIs');
+  if (kpiEl) {
+    const fk = (v, s) => v !== null ? v.toFixed(2) + s : 'N/A';
+    kpiEl.innerHTML = `<div class="bi-kpi-chip">Méd. 3m: <strong>${fk(ratios.avgLiquidez, '')}</strong></div>`;
+  }
+
+  // ── 3 · Taxas de Churn e Inadimplência ────────────────────────────────────
+  const taxasDs = [
+    { ...lineDs('Taxa de Churn', ratios.churn, C.red),
+      datalabels: { ...dlOpts(C.redL,   'top',    '%', 11), formatter: v => v !== null ? v.toFixed(1)+'%' : '' } },
+    { ...lineDs('Taxa de Inadimplência', ratios.titulosVenc, C.amber),
+      datalabels: { ...dlOpts(C.amberL, 'bottom', '%', 11), formatter: v => v !== null ? v.toFixed(2)+'%' : '' } },
+  ];
+
+  makeChart('biTaxasChart', {
+    type: 'line', data: { labels, datasets: taxasDs },
+    options: baseOpts(
+      { x: xSc, y: { ...ySc, ticks: { ...ySc.ticks, callback: v => v + '%' } } },
+      ctx => ` ${ctx.dataset.label}: ${ctx.raw !== null ? ctx.raw+'%' : '–'}`
+    ),
+  });
+  mkLeg('biTaxasLegend', taxasDs);
+
+  // KPI médias taxas
+  const taxasKpi = document.getElementById('biTaxasKPIs');
+  if (taxasKpi) {
+    const fk = (v, s) => v !== null ? v.toFixed(2) + s : 'N/A';
+    taxasKpi.innerHTML = [
+      { l: 'Churn méd. 3m',        v: fk(ratios.avgChurn,   '%') },
+      { l: 'Inadimpl. méd. 3m',    v: fk(ratios.avgTitulos, '%') },
+    ].map(k => `<div class="bi-kpi-chip">${k.l}: <strong>${k.v}</strong></div>`).join('');
+  }
+
+  // ── 4 · Contratos Ativos vs Cancelados ────────────────────────────────────
+  // Eixo esquerdo: Ativos (escala ~45–60)
+  // Eixo direito:  Cancelados (escala 0–5)
+  const contDs = [
+    { ...lineDs('Contratos Ativos',    contratos.ativos,    C.teal, { fill: true, backgroundColor: 'rgba(6,182,212,0.08)', yAxisID: 'y' }),
+      datalabels: { ...dlOpts(C.teal,  'top',    '', 12), formatter: v => v !== null ? v : '' } },
+    { ...lineDs('Contratos Cancelados', contratos.cancelados, C.red, { yAxisID: 'y2' }),
+      datalabels: { ...dlOpts(C.redL, 'bottom', '', 12), formatter: v => v !== null ? v : '' } },
+  ];
+
+  makeChart('biContratosChart', {
+    type: 'line', data: { labels, datasets: contDs },
+    options: baseOpts(
+      {
+        x:  xSc,
+        y:  { ...ySc, position: 'left',  ticks: { ...ySc.ticks, stepSize: 2 } },
+        y2: { grid: { display: false }, position: 'right', ticks: { font: { size: 10 }, color: C.redL, stepSize: 1 } },
+      },
+      ctx => ` ${ctx.dataset.label}: ${ctx.raw !== null ? ctx.raw : '–'}`
+    ),
+  });
+  mkLeg('biContratosLegend', contDs);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SLIDE 1 · OKR OBJETIVOS  — big overview cards
 // ─────────────────────────────────────────────────────────────────────────────
 
 function renderOKRObjPage(data) {
@@ -854,15 +1003,13 @@ function renderOKRKrPage(data) {
   }
 
   const rowsHtml = rows.map((kr, i) => {
-    const krCls   = okrBarCls(kr.progresso);
-    const acaoCls = okrBarCls(kr.acaoPct);
-    const even    = i % 2 === 1 ? ' okr-row-alt' : '';
+    const krCls = okrBarCls(kr.progresso);
+    const even  = i % 2 === 1 ? ' okr-row-alt' : '';
     return `
       <div class="okr-tbl-row${even}">
         <div class="okr-tbl-kr">${esc(kr.name)}</div>
         <div class="okr-tbl-alvo">${kr.alvo ? esc(kr.alvo) : '–'}</div>
         <div class="okr-tbl-pct okr-c-${krCls}">${okrPctLbl(kr.progresso)}</div>
-        <div class="okr-tbl-acoes okr-c-${acaoCls}">${okrPctLbl(kr.acaoPct)}</div>
       </div>`;
   }).join('');
 
@@ -872,7 +1019,6 @@ function renderOKRKrPage(data) {
         <div class="okr-tbl-h-kr">Key Result</div>
         <div class="okr-tbl-h-alvo">Alvo</div>
         <div class="okr-tbl-h-pct">% KR</div>
-        <div class="okr-tbl-h-acoes">% Ações</div>
       </div>
       <div class="okr-tbl-body">${rowsHtml}</div>
     </div>`;
@@ -883,7 +1029,7 @@ function renderOKRKrPage(data) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Per-slide durations (ms): todas as telas = 60s
-const SLIDE_INTERVALS = [60000, 60000, 60000, 60000, 60000];
+const SLIDE_INTERVALS = [60000, 60000, 60000, 60000, 60000, 60000];
 let carouselIndex   = 0;
 let carouselTimer   = null;
 let progressTimer   = null;
@@ -902,10 +1048,12 @@ function goToSlide(idx) {
   dots().forEach((d, i) => d.classList.toggle('active', i === carouselIndex));
 
   // Re-render pages when they become visible (ensures chart sizing)
-  if (carouselIndex === 0 && state.okr)      renderOKRObjPage(state.okr);
-  if (carouselIndex === 1 && state.okr)      renderOKRKrPage(state.okr);
-  if (carouselIndex === 2 && state.metas)    renderMetasPage(state.metas);
-  if (carouselIndex === 4 && state.clientes) renderClientesPage(state.clientes);
+  if (carouselIndex === 0 && state.bi)       renderBIPage(state.bi);
+  if (carouselIndex === 1 && state.dre)      renderDRE(state.dre, state.range.from, state.range.to);
+  if (carouselIndex === 2 && state.clientes) renderClientesPage(state.clientes);
+  if (carouselIndex === 3 && state.okr)      renderOKRObjPage(state.okr);
+  if (carouselIndex === 4 && state.okr)      renderOKRKrPage(state.okr);
+  if (carouselIndex === 5 && state.metas)    renderMetasPage(state.metas);
 
   // Re-arm the auto-advance timer with this slide's duration
   clearInterval(carouselTimer);
@@ -1026,6 +1174,10 @@ async function refreshAll() {
         renderOKRObjPage(data);
         renderOKRKrPage(data);
       }),
+      fetch('/api/bi?force=1').then(r => { if (!r.ok) throw new Error(`BI ${r.status}`); return r.json(); }).then(data => {
+        state.bi = data;
+        renderBIPage(data);
+      }),
     ]);
     hideError();
   } catch (err) {
@@ -1089,6 +1241,16 @@ async function loadOKR() {
   }
 }
 
+async function loadBI() {
+  try {
+    const data = await fetchBI();
+    state.bi   = data;
+    renderBIPage(data);
+  } catch (err) {
+    console.error('[BI]', err);
+  }
+}
+
 function updateFooterClock() {
   const t = new Date().toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
   setText('footerTime',       t);
@@ -1096,6 +1258,7 @@ function updateFooterClock() {
   setText('cliFooterTime',    t);
   setText('okrObjFooterTime', t);
   setText('okrKrFooterTime',  t);
+  setText('biFooterTime',     t);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1108,9 +1271,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupRefreshBtn();
   startCarousel();
 
-  await Promise.all([loadDRE(), loadClientes(), loadMetas(), loadOKR()]);
+  await Promise.all([loadDRE(), loadClientes(), loadMetas(), loadOKR(), loadBI()]);
 
-  setInterval(() => { loadDRE(); loadClientes(); loadMetas(); loadOKR(); }, 5 * 60 * 1000);
+  setInterval(() => { loadDRE(); loadClientes(); loadMetas(); loadOKR(); loadBI(); }, 5 * 60 * 1000);
 
   updateFooterClock();
   setInterval(updateFooterClock, 1000);

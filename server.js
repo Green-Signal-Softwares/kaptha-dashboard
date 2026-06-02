@@ -13,6 +13,7 @@ let dreCache      = { data: null, ts: 0 };
 let clientesCache = { data: null, ts: 0 };
 let metasCache    = { data: null, ts: 0 };
 let okrCache      = { data: null, ts: 0 };
+let biCache       = { data: null, ts: 0 };
 
 // ─── Utilitários ──────────────────────────────────────────────────────────────
 
@@ -329,36 +330,41 @@ async function fetchClientes() {
     .sort((a, b) => b.total - a.total)
     .slice(0, 10);
 
-  // ── LTV (apenas clientes que já churnaram) ─────────────────────────────────
-  const ltvList = clients.map(c => {
+  // ── LTV (todos os clientes: ativos até curMi + inativos até churn) ──────────
+  // Responde: "quanto um cliente deixa em R$ e por quanto tempo fica conosco"
+  const ltvAllList = clients.map(c => {
     const vals = ALL_M.map((_, mi) => getVal(c, mi));
     const first = vals.findIndex(v => v > 0);
     if (first < 0) return null;
 
-    // Encontra o último mês ativo até curMi
-    let last = first;
-    for (let mi = first + 1; mi <= curMi; mi++) {
-      if (vals[mi] > 0) last = mi;
+    const isActiveNow = vals[curMi] > 0;
+    let last;
+    if (isActiveNow) {
+      last = curMi; // ativo: conta do primeiro mês até o mês atual
+    } else {
+      last = first;
+      for (let mi = first + 1; mi <= curMi; mi++) {
+        if (vals[mi] > 0) last = mi;
+      }
     }
 
-    // Churnou se não está ativo agora (ou último ativo < curMi)
-    const isActiveNow = vals[curMi] > 0;
-    if (isActiveNow) return null; // ativo → não entra no LTV de churned
-
-    const months = last - first + 1;
+    const months  = last - first + 1;
     const revenue = vals.slice(first, last + 1).reduce((s, v) => s + v, 0);
-    return { name: c.name, plan: c.plan, months, revenue };
+    return { name: c.name, plan: c.plan, months, revenue, churned: !isActiveNow };
   }).filter(Boolean);
 
-  const ltvMeses = ltvList.length > 0
-    ? ltvList.reduce((s, l) => s + l.months, 0) / ltvList.length
+  const ltvMeses = ltvAllList.length > 0
+    ? ltvAllList.reduce((s, l) => s + l.months, 0) / ltvAllList.length
     : null;
-  const ltvReais = ltvList.length > 0
-    ? ltvList.reduce((s, l) => s + l.revenue, 0) / ltvList.length
+  const ltvReais = ltvAllList.length > 0
+    ? ltvAllList.reduce((s, l) => s + l.revenue, 0) / ltvAllList.length
     : null;
 
+  // LTV da lista somente churned (para churn rate e por plano)
+  const ltvList = ltvAllList.filter(l => l.churned);
+
   // Churn rate mensal global: (nChurned / nTotal) / meses_decorridos × 100
-  const nMesesDecorridos = curMi + 1; // ago/25=0 … curMi = meses inclusivos
+  const nMesesDecorridos = curMi + 1;
   const churnRateMensal = clients.length > 0 && nMesesDecorridos > 0
     ? (ltvList.length / clients.length) / nMesesDecorridos * 100
     : 0;
@@ -394,7 +400,7 @@ async function fetchClientes() {
       meses:    ltvMeses !== null ? Math.round(ltvMeses * 10) / 10 : null,
       reais:    ltvReais !== null ? Math.round(ltvReais) : null,
       nChurned: ltvList.length,
-      nTotal:   clients.length,
+      nTotal:   ltvAllList.length,
       porPlano: ltvPorPlano,
     },
   };
@@ -516,6 +522,99 @@ async function fetchMetas() {
   };
 }
 
+// ─── BI 2026 ─────────────────────────────────────────────────────────────────
+
+async function fetchBI() {
+  const auth = new google.auth.GoogleAuth({
+    keyFile: path.join(__dirname, 'credentials.json'),
+    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+  });
+  const sheets = google.sheets({ version: 'v4', auth: await auth.getClient() });
+  const EMPTY = { metadata: { lastUpdated: new Date().toISOString() }, hasData: false };
+
+  let rows;
+  try {
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: "'BI 2026'!A1:D20",
+    });
+    rows = res.data.values || [];
+  } catch (e) {
+    console.error('[BI]', e.message);
+    return EMPTY;
+  }
+
+  // Normaliza "03/2026" ou "3/31/2026" → "Mar/26"
+  const normMonth = s => {
+    const pts = String(s).split('/');
+    const m = parseInt(pts[0]);
+    const y = pts[pts.length - 1].slice(-2);
+    const ns = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    return (ns[m - 1] || s) + '/' + y;
+  };
+
+  const parsePct = s => {
+    if (!s) return null;
+    const n = parseFloat(String(s).replace('%','').replace(',','.').trim());
+    return isNaN(n) ? null : Math.round(n * 100) / 100;
+  };
+
+  const parseNum = s => {
+    if (!s) return null;
+    const n = parseFloat(String(s).replace(',','.').trim());
+    return isNaN(n) ? null : n;
+  };
+
+  const avg3 = arr => {
+    const valid = arr.filter(v => v !== null && !isNaN(v));
+    const last3 = valid.slice(-3);
+    if (!last3.length) return null;
+    return Math.round(last3.reduce((a, b) => a + b, 0) / last3.length * 100) / 100;
+  };
+
+  // ── Seção 1: Financeiros (R1:R6) ─────────────────────────────────────────
+  const labels = ((rows[0] || []).slice(1).filter(Boolean)).map(normMonth);
+
+  const financials = [];
+  for (let ri = 1; ri <= 5; ri++) {
+    const row = rows[ri];
+    if (!row || !row[0]) continue;
+    financials.push({
+      name:   row[0],
+      values: row.slice(1, labels.length + 1).map(v => parseValue(v)),
+    });
+  }
+
+  // ── Seção 2: Taxas (R9:R12) ──────────────────────────────────────────────
+  const churn      = (rows[9]  || []).slice(1, labels.length + 1).map(v => parsePct(v));
+  const titulosVenc= (rows[10] || []).slice(1, labels.length + 1).map(v => parsePct(v));
+  const liquidez   = (rows[11] || []).slice(1, labels.length + 1).map(v => parseNum(v));
+
+  // ── Seção 3: Contratos (R16:R18) ─────────────────────────────────────────
+  const ativos    = (rows[16] || []).slice(1, labels.length + 1).map(v => parseNum(v));
+  const cancelados= (rows[17] || []).slice(1, labels.length + 1).map(v => parseNum(v));
+
+  // Vendas = Δativos + cancelados  (requer mês anterior)
+  const vendas = ativos.map((a, i) => {
+    if (i === 0 || ativos[i - 1] === null) return null;
+    return a - ativos[i - 1] + (cancelados[i] || 0);
+  });
+
+  return {
+    metadata:   { lastUpdated: new Date().toISOString() },
+    labels,
+    financials,
+    ratios: {
+      churn, titulosVenc, liquidez,
+      avgChurn:    avg3(churn),
+      avgTitulos:  avg3(titulosVenc),
+      avgLiquidez: avg3(liquidez),
+    },
+    contratos: { ativos, cancelados, vendas },
+    hasData: financials.length > 0,
+  };
+}
+
 // ─── OKR Tracker ─────────────────────────────────────────────────────────────
 
 async function fetchOKR() {
@@ -614,14 +713,18 @@ async function fetchOKR() {
         }
       }
 
-      // Scan ri+1 to ri+8 for action-progress row ("Progresso das ações")
+      // Scan ri+1 to ri+8 for action-progress and responsável rows
+      let responsavel = null;
       for (let si = ri + 1; si < Math.min(ri + 9, tabRows.length); si++) {
         const sr = tabRows[si];
         if (!sr) continue;
         // Stop at the next KR block
         if (si > ri + 1 && String(sr[1] || '').includes('📌')) break;
 
-        const sc1 = String(sr[1] || '').trim().toLowerCase();
+        const sc1raw = String(sr[1] || '').trim();
+        const sc1    = sc1raw.toLowerCase();
+
+        // Action progress row
         if (sc1.includes('progresso das a')) {
           const c3 = String(sr[3] || '').trim();
           const c4 = String(sr[4] || '').trim();
@@ -632,9 +735,16 @@ async function fetchOKR() {
           acaoPct = p;
           break;
         }
+
+        // Responsável row: starts with 👤 or contains RESP
+        if (!responsavel && (sc1raw.includes('👤') || sc1.includes('resp'))) {
+          let name = sc1raw.replace(/^👤\s*/u, '').replace(/^RESP\s*/iu, '').trim();
+          if (!name) name = String(sr[2] || '').trim();
+          if (name) responsavel = name;
+        }
       }
 
-      krs.push({ name: krName, alvo, atual, progresso, acaoPct });
+      krs.push({ name: krName, alvo, atual, progresso, acaoPct, responsavel });
     }
 
     objectives.push({
@@ -691,6 +801,20 @@ app.get('/api/metas', async (req, res) => {
     res.json(metasCache.data);
   } catch (err) {
     console.error('[Metas]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/bi', async (req, res) => {
+  const now = Date.now();
+  const force = req.query.force === '1';
+  if (!force && biCache.data && now - biCache.ts < CACHE_TTL) return res.json(biCache.data);
+  try {
+    biCache.data = await fetchBI();
+    biCache.ts = now;
+    res.json(biCache.data);
+  } catch (err) {
+    console.error('[BI]', err.message);
     res.status(500).json({ error: err.message });
   }
 });
