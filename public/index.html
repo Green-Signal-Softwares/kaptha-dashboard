@@ -8,7 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=6" />
+  <link rel="stylesheet" href="style.css?v=7" />
 </head>
 <body>
 
@@ -20,6 +20,7 @@
   <button class="c-dot" data-slide="3" title="OKR · Objetivos"></button>
   <button class="c-dot" data-slide="4" title="OKR · KRs"></button>
   <button class="c-dot" data-slide="5" title="Metas Kaptha.AI"></button>
+  <button class="c-dot" data-slide="6" title="Funil Comercial"></button>
 </div>
 <button class="global-refresh-btn" id="globalRefreshBtn" title="Atualizar dados agora">↻</button>
 <div class="carousel-progress-wrap">
@@ -435,10 +436,43 @@
   </div><!-- /slide5 metas -->
 
 
+  <!-- ════════════════════════════════════════════════════════════════
+       SLIDE 6 · FUNIL COMERCIAL
+       ════════════════════════════════════════════════════════════════ -->
+  <div class="slide" id="slide6">
+    <div class="page-header">
+      <div class="brand-area">
+        <div class="logo-wrap"><img src="logo.png" alt="Kaptha.AI" class="logo-img" /></div>
+        <div class="current-month-badge">
+          <span class="badge-dot"></span>
+          <span id="comercialMonthLabel">Funil Comercial</span>
+        </div>
+      </div>
+      <div class="page-title-badge">Funil Comercial</div>
+      <div class="refresh-info">
+        <span class="refresh-icon">↻</span>
+        <span id="comercialLastUpdate">–</span>
+      </div>
+    </div>
+
+    <div class="comercial-content">
+      <div class="comercial-grid" id="comercialGrid">
+        <!-- Populado pelo dashboard.js -->
+      </div>
+    </div>
+
+    <footer class="footer">
+      <span>Kaptha Lead · Funil Comercial</span>
+      <span id="comercialFooterTime">–</span>
+      <span>Atualização automática a cada 5 minutos</span>
+    </footer>
+  </div><!-- /slide6 comercial -->
+
+
 </div><!-- /carousel-track -->
 </div><!-- /carousel-wrapper -->
 
 <div class="error-overlay" id="errorOverlay"></div>
-<script src="dashboard.js?v=6"></script>
+<script src="dashboard.js?v=7"></script>
 </body>
 </html>

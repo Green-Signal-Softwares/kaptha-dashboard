@@ -1,12 +1,18 @@
 const path = require('path');
+const fs   = require('fs');
+const zlib = require('zlib');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
+const XLSX    = require('xlsx');
 const { google } = require('googleapis');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const SPREADSHEET_ID     = '1zgf41qe7eIMj6jYKVoGZQB7J_mVcvRHXG7tIxvLSFEs';
 const OKR_SPREADSHEET_ID = '1OYYQXdYWIex7sIGM4rIBVMAmaR1tndtaq85utYqL-5o';
+const COMERCIAL_SPREADSHEET_ID = process.env.COMERCIAL_SPREADSHEET_ID || '';
+const COMERCIAL_XLSX_PATH = process.env.COMERCIAL_XLSX_PATH ||
+  path.join(__dirname, 'base_estatica', 'Controle_Comercial_Kaptha_Lead.xlsx');
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
 let dreCache      = { data: null, ts: 0 };
@@ -14,6 +20,7 @@ let clientesCache = { data: null, ts: 0 };
 let metasCache    = { data: null, ts: 0 };
 let okrCache      = { data: null, ts: 0 };
 let biCache       = { data: null, ts: 0 };
+let comercialCache = { data: null, ts: 0 };
 
 // ─── Utilitários ──────────────────────────────────────────────────────────────
 
@@ -30,6 +37,39 @@ function parseValue(str) {
     .replace(',', '.');   // converte decimal BR → EN
   const val = parseFloat(cleaned);
   return isNaN(val) ? 0 : (negative ? -Math.abs(val) : val);
+}
+
+function normalizeKey(s) {
+  return String(s || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '').trim();
+}
+
+function parseFunnelCell(val) {
+  if (val == null || val === '') return null;
+  if (typeof val === 'number') {
+    if (isNaN(val)) return null;
+    if (Math.abs(val) <= 2) return Math.round(val * 1000) / 10;
+    return Math.round(val * 10) / 10;
+  }
+  return parseFunnelValue(val);
+}
+
+function parseFunnelValue(str) {
+  if (str == null) return null;
+  const s = String(str).trim();
+  if (!s || s === '-' || s === '–' || s === '—') return null;
+  const negative = s.startsWith('-');
+  const cleaned = s
+    .replace(/R\$\s*/g, '')
+    .replace(/%/g, '')
+    .trim()
+    .replace(/\./g, '')
+    .replace(',', '.');
+  const val = parseFloat(cleaned);
+  if (isNaN(val)) return null;
+  const n = negative ? -Math.abs(val) : val;
+  // Valores 0–1.99 sem % explícito → fração (ex: 0.22 → 22%)
+  if (!s.includes('%') && Math.abs(n) <= 2) return Math.round(n * 1000) / 10;
+  return Math.round(n * 10) / 10;
 }
 
 function parseProgresso(v) {
@@ -761,6 +801,133 @@ async function fetchOKR() {
   };
 }
 
+// ─── Comercial · Funis por Cliente ────────────────────────────────────────────
+
+const COMERCIAL_CLIENTS = {
+  GREENSIGNAL: {
+    id: 'GREENSIGNAL',
+    name: 'Green Signal',
+    color: '#10b981',
+    stages: [
+      'META → Recebidos',
+      'Leads → Conectados',
+      'Conectados → Qualif.',
+      'Qualif. → Agendados',
+      'Agend. → Propostas',
+      'Propostas → Vendas',
+      'Leads → Vendas',
+    ],
+  },
+  ITS: {
+    id: 'ITS',
+    name: 'ITS',
+    color: '#3b82f6',
+    stages: [
+      'META → Recebidos',
+      'Leads → Conectados',
+      'Conectados → Qualif.',
+      'Qualif. → Agendados',
+      'Agend. → Realizados',
+    ],
+  },
+};
+
+function normalizeEtapa(s) {
+  return normalizeKey(s).replace(/[^A-Z0-9→]/g, '');
+}
+
+function parseComercialRows(rows) {
+  const EMPTY = {
+    metadata: { lastUpdated: new Date().toISOString() },
+    clients: [],
+    hasData: false,
+  };
+  if (!rows || rows.length < 2) return EMPTY;
+
+  const byClient = {};
+  for (let ri = 1; ri < rows.length; ri++) {
+    const row = rows[ri];
+    if (!row) continue;
+    const clientRaw = String(row[0] || '').trim();
+    const etapaRaw  = String(row[1] || '').trim();
+    if (!clientRaw || !etapaRaw) continue;
+
+    const clientKey = normalizeKey(clientRaw);
+    if (!byClient[clientKey]) byClient[clientKey] = {};
+    byClient[clientKey][normalizeEtapa(etapaRaw)] = parseFunnelCell(row[2]);
+  }
+
+  const clients = Object.values(COMERCIAL_CLIENTS).map(cfg => {
+    const stageMap = byClient[cfg.id] || {};
+    const stages = cfg.stages.map(label => ({
+      label,
+      value: stageMap[normalizeEtapa(label)] ?? null,
+    }));
+    const withData = stages.filter(s => s.value !== null);
+    const overall = withData.length
+      ? Math.round(withData.reduce((sum, s) => sum + s.value, 0) / withData.length * 10) / 10
+      : null;
+    return {
+      id: cfg.id,
+      name: cfg.name,
+      color: cfg.color,
+      stages,
+      overall,
+    };
+  });
+
+  return {
+    metadata: { lastUpdated: new Date().toISOString() },
+    clients,
+    hasData: clients.some(c => c.stages.some(s => s.value !== null)),
+  };
+}
+
+function readComercialDatasetFromWorkbook(wb) {
+  const ws = wb.Sheets['DATASET'];
+  if (!ws) return parseComercialRows([]);
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+  return parseComercialRows(rows);
+}
+
+async function fetchComercialFromXlsx() {
+  if (!fs.existsSync(COMERCIAL_XLSX_PATH)) {
+    return { metadata: { lastUpdated: new Date().toISOString() }, clients: [], hasData: false };
+  }
+  const wb = XLSX.readFile(COMERCIAL_XLSX_PATH);
+  return readComercialDatasetFromWorkbook(wb);
+}
+
+async function fetchComercialFromSheets() {
+  const auth = new google.auth.GoogleAuth({
+    keyFile: path.join(__dirname, 'credentials.json'),
+    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+  });
+  const sheets = google.sheets({ version: 'v4', auth: await auth.getClient() });
+
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: COMERCIAL_SPREADSHEET_ID,
+    range: 'DATASET!A1:C50',
+  });
+  return parseComercialRows(res.data.values || []);
+}
+
+async function fetchComercial() {
+  if (COMERCIAL_SPREADSHEET_ID) {
+    try {
+      return await fetchComercialFromSheets();
+    } catch (e) {
+      console.error('[Comercial Sheets]', e.message);
+    }
+  }
+  try {
+    return await fetchComercialFromXlsx();
+  } catch (e) {
+    console.error('[Comercial XLSX]', e.message);
+    return { metadata: { lastUpdated: new Date().toISOString() }, clients: [], hasData: false };
+  }
+}
+
 // ─── Rotas ────────────────────────────────────────────────────────────────────
 
 app.get('/api/dre', async (req, res) => {
@@ -829,6 +996,20 @@ app.get('/api/okr', async (req, res) => {
     res.json(okrCache.data);
   } catch (err) {
     console.error('[OKR]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/comercial', async (req, res) => {
+  const now = Date.now();
+  const force = req.query.force === '1';
+  if (!force && comercialCache.data && now - comercialCache.ts < CACHE_TTL) return res.json(comercialCache.data);
+  try {
+    comercialCache.data = await fetchComercial();
+    comercialCache.ts = now;
+    res.json(comercialCache.data);
+  } catch (err) {
+    console.error('[Comercial]', err.message);
     res.status(500).json({ error: err.message });
   }
 });

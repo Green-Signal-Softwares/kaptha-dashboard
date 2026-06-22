@@ -13,6 +13,7 @@ const state = {
   metas: null,
   okr: null,
   bi: null,
+  comercial: null,
   metasSelectedMonths: [], // [] = usa mês atual por padrão
   range: { from: 0, to: 12 },
   activePreset: 'ano1',
@@ -85,6 +86,7 @@ const fetchClientes = () => fetch('/api/clientes').then(r => { if (!r.ok) throw 
 const fetchMetas    = () => fetch('/api/metas').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
 const fetchOKR      = () => fetch('/api/okr').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
 const fetchBI       = () => fetch('/api/bi').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
+const fetchComercial = () => fetch('/api/comercial').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
 
 // ── Série no intervalo [from, to] ─────────────────────────────────────────────
 const getInRange = (serie, from, to) => [...serie.ano1, ...serie.ano2].slice(from, to + 1);
@@ -1025,11 +1027,93 @@ function renderOKRKrPage(data) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+//  SLIDE 6 · FUNIL COMERCIAL
+// ─────────────────────────────────────────────────────────────────────────────
+
+const funnelBarCls = (pct, isMeta) => {
+  if (pct === null || pct === undefined) return 'critical';
+  if (isMeta) {
+    if (pct >= 100) return 'achieved';
+    if (pct >= 70)  return 'good';
+    if (pct >= 40)  return 'mid';
+    return 'critical';
+  }
+  if (pct >= 70)  return 'achieved';
+  if (pct >= 40)  return 'good';
+  if (pct >= 20)  return 'mid';
+  if (pct >= 10)  return 'low';
+  return 'critical';
+};
+
+const funnelPctLbl = pct => (pct === null || pct === undefined) ? '–' : pct.toFixed(1) + '%';
+
+const FUNNEL_BAR_COLORS = {
+  achieved: 'var(--green)',
+  good:     'var(--teal)',
+  mid:      'var(--amber)',
+  low:      '#f97316',
+  critical: 'var(--red)',
+};
+
+function renderComercialPage(data) {
+  const { metadata, clients } = data;
+  updateTimestamp(metadata.lastUpdated, ['comercialLastUpdate']);
+
+  const grid = document.getElementById('comercialGrid');
+  if (!grid) return;
+
+  if (!data.hasData || !clients.length) {
+    grid.innerHTML = '<div class="comercial-empty">Sem dados de funil comercial.<br>Verifique a aba DATASET em Controle_Comercial_Kaptha_Lead.xlsx.</div>';
+    return;
+  }
+
+  grid.innerHTML = clients.map(client => {
+    const n = client.stages.length;
+    const stepsHtml = client.stages.map((stage, i) => {
+      const isMeta = stage.label.startsWith('META');
+      const cls    = funnelBarCls(stage.value, isMeta);
+      const pctVis = stage.value !== null ? Math.min(stage.value, 100) : 0;
+      const width  = Math.max(55, 100 - i * (40 / Math.max(n - 1, 1)));
+
+      return `
+        <div class="comercial-step">
+          <div class="comercial-step-meta" style="--step-width:${width}%">
+            <span class="comercial-step-label">${esc(stage.label)}</span>
+            <span class="comercial-step-val okr-c-${cls}">${funnelPctLbl(stage.value)}</span>
+          </div>
+          <div class="comercial-step-bar-wrap" style="--step-width:${width}%">
+            <div class="comercial-step-bar">
+              <div class="comercial-step-fill ${cls}" style="width:${pctVis}%; background:${FUNNEL_BAR_COLORS[cls]}"></div>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+    const overallCls = funnelBarCls(client.overall, false);
+
+    return `
+      <div class="comercial-card">
+        <div class="comercial-card-head">
+          <div>
+            <div class="comercial-client-name">${esc(client.name)}</div>
+            <span class="comercial-client-badge">${n} etapas</span>
+          </div>
+          <div class="comercial-overall">
+            <span class="comercial-overall-label">Conv. média</span>
+            <span class="comercial-overall-val okr-c-${overallCls}">${funnelPctLbl(client.overall)}</span>
+          </div>
+        </div>
+        <div class="comercial-funnel">${stepsHtml}</div>
+      </div>`;
+  }).join('');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 //  CAROUSEL
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Per-slide durations (ms): todas as telas = 60s
-const SLIDE_INTERVALS = [60000, 60000, 60000, 60000, 60000, 60000];
+const SLIDE_INTERVALS = [60000, 60000, 60000, 60000, 60000, 60000, 60000];
 let carouselIndex   = 0;
 let carouselTimer   = null;
 let progressTimer   = null;
@@ -1053,7 +1137,8 @@ function goToSlide(idx) {
   if (carouselIndex === 2 && state.clientes) renderClientesPage(state.clientes);
   if (carouselIndex === 3 && state.okr)      renderOKRObjPage(state.okr);
   if (carouselIndex === 4 && state.okr)      renderOKRKrPage(state.okr);
-  if (carouselIndex === 5 && state.metas)    renderMetasPage(state.metas);
+  if (carouselIndex === 5 && state.metas)     renderMetasPage(state.metas);
+  if (carouselIndex === 6 && state.comercial) renderComercialPage(state.comercial);
 
   // Re-arm the auto-advance timer with this slide's duration
   clearInterval(carouselTimer);
@@ -1178,6 +1263,10 @@ async function refreshAll() {
         state.bi = data;
         renderBIPage(data);
       }),
+      fetch('/api/comercial?force=1').then(r => { if (!r.ok) throw new Error(`Comercial ${r.status}`); return r.json(); }).then(data => {
+        state.comercial = data;
+        renderComercialPage(data);
+      }),
     ]);
     hideError();
   } catch (err) {
@@ -1251,6 +1340,16 @@ async function loadBI() {
   }
 }
 
+async function loadComercial() {
+  try {
+    const data = await fetchComercial();
+    state.comercial = data;
+    renderComercialPage(data);
+  } catch (err) {
+    console.error('[Comercial]', err);
+  }
+}
+
 function updateFooterClock() {
   const t = new Date().toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
   setText('footerTime',       t);
@@ -1259,6 +1358,7 @@ function updateFooterClock() {
   setText('okrObjFooterTime', t);
   setText('okrKrFooterTime',  t);
   setText('biFooterTime',     t);
+  setText('comercialFooterTime', t);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1271,9 +1371,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupRefreshBtn();
   startCarousel();
 
-  await Promise.all([loadDRE(), loadClientes(), loadMetas(), loadOKR(), loadBI()]);
+  await Promise.all([loadDRE(), loadClientes(), loadMetas(), loadOKR(), loadBI(), loadComercial()]);
 
-  setInterval(() => { loadDRE(); loadClientes(); loadMetas(); loadOKR(); loadBI(); }, 5 * 60 * 1000);
+  setInterval(() => { loadDRE(); loadClientes(); loadMetas(); loadOKR(); loadBI(); loadComercial(); }, 5 * 60 * 1000);
 
   updateFooterClock();
   setInterval(updateFooterClock, 1000);

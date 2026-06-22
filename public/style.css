@@ -51,7 +51,7 @@ body {
 .carousel-track {
   display: flex;
   flex-direction: row;
-  width: 600vw;
+  width: 700vw;
   height: 100vh;
   transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -1360,4 +1360,164 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ── FUNIL COMERCIAL ─────────────────────────────────────────────────────────── */
+.comercial-content {
+  flex: 1;
+  min-height: 0;
+  padding: clamp(8px, 1vw, 14px) clamp(12px, 1.4vw, 20px);
+  display: flex;
+  flex-direction: column;
+}
+
+.comercial-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: clamp(10px, 1.2vw, 16px);
+}
+
+.comercial-empty {
+  grid-column: 1 / -1;
+  color: var(--text-3);
+  font-size: 13px;
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.comercial-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: clamp(12px, 1.2vw, 18px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 1vw, 14px);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.comercial-card:hover { border-color: var(--border-h); }
+
+.comercial-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.comercial-client-name {
+  font-size: clamp(14px, 1.1vw, 18px);
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.comercial-client-badge {
+  font-size: clamp(9px, 0.65vw, 11px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  margin-top: 4px;
+  display: inline-block;
+}
+
+.comercial-overall {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.comercial-overall-label {
+  font-size: clamp(8px, 0.55vw, 10px);
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.comercial-overall-val {
+  font-size: clamp(16px, 1.4vw, 22px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.comercial-funnel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
+  gap: clamp(4px, 0.5vw, 7px);
+  padding: 4px 0;
+}
+
+.comercial-step {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.comercial-step-bar-wrap {
+  width: var(--step-width, 100%);
+  transition: width 0.3s ease;
+}
+
+.comercial-step-bar {
+  position: relative;
+  height: clamp(28px, 3.2vh, 40px);
+  background: var(--bg-card-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.comercial-step-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 7px;
+  transition: width 0.4s ease;
+  opacity: 0.85;
+}
+
+.comercial-step-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: var(--step-width, 100%);
+  gap: 8px;
+  padding: 0 2px;
+}
+
+.comercial-step-label {
+  font-size: clamp(9px, 0.72vw, 12px);
+  font-weight: 500;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.comercial-step-val {
+  font-size: clamp(11px, 0.9vw, 14px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+  .comercial-grid { grid-template-columns: 1fr; }
 }
