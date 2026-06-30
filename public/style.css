@@ -1375,7 +1375,8 @@ body {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
   gap: clamp(10px, 1.2vw, 16px);
 }
 
@@ -1518,6 +1519,10 @@ body {
   flex-shrink: 0;
 }
 
+@media (max-width: 1200px) {
+  .comercial-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: none; }
+}
+
 @media (max-width: 900px) {
-  .comercial-grid { grid-template-columns: 1fr; }
+  .comercial-grid { grid-template-columns: 1fr; grid-template-rows: none; }
 }

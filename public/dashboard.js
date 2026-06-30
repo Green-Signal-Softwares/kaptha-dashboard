@@ -1067,7 +1067,9 @@ function renderComercialPage(data) {
     return;
   }
 
-  grid.innerHTML = clients.map(client => {
+  const visibleClients = clients.slice(0, 6);
+
+  grid.innerHTML = visibleClients.map(client => {
     const n = client.stages.length;
     const stepsHtml = client.stages.map((stage, i) => {
       const isMeta = stage.label.startsWith('META');

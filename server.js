@@ -803,37 +803,16 @@ async function fetchOKR() {
 
 // ─── Comercial · Funis por Cliente ────────────────────────────────────────────
 
-const COMERCIAL_CLIENTS = {
-  GREENSIGNAL: {
-    id: 'GREENSIGNAL',
-    name: 'Green Signal',
-    color: '#10b981',
-    stages: [
-      'META → Recebidos',
-      'Leads → Conectados',
-      'Conectados → Qualif.',
-      'Qualif. → Agendados',
-      'Agend. → Propostas',
-      'Propostas → Vendas',
-      'Leads → Vendas',
-    ],
-  },
-  ITS: {
-    id: 'ITS',
-    name: 'ITS',
-    color: '#3b82f6',
-    stages: [
-      'META → Recebidos',
-      'Leads → Conectados',
-      'Conectados → Qualif.',
-      'Qualif. → Agendados',
-      'Agend. → Realizados',
-    ],
-  },
-};
-
 function normalizeEtapa(s) {
   return normalizeKey(s).replace(/[^A-Z0-9→]/g, '');
+}
+
+function cleanStageLabel(s) {
+  return String(s || '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s*→\s*/g, ' → ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function parseComercialRows(rows) {
@@ -845,32 +824,52 @@ function parseComercialRows(rows) {
   if (!rows || rows.length < 2) return EMPTY;
 
   const byClient = {};
+  const clientOrder = [];
+
   for (let ri = 1; ri < rows.length; ri++) {
     const row = rows[ri];
     if (!row) continue;
     const clientRaw = String(row[0] || '').trim();
-    const etapaRaw  = String(row[1] || '').trim();
+    const etapaRaw  = cleanStageLabel(row[1] || '');
     if (!clientRaw || !etapaRaw) continue;
 
     const clientKey = normalizeKey(clientRaw);
-    if (!byClient[clientKey]) byClient[clientKey] = {};
-    byClient[clientKey][normalizeEtapa(etapaRaw)] = parseFunnelCell(row[2]);
+    if (!byClient[clientKey]) {
+      byClient[clientKey] = {
+        id: clientKey,
+        name: clientRaw,
+        stagesMap: {},
+        stages: [],
+      };
+      clientOrder.push(clientKey);
+    }
+
+    const stageKey = normalizeEtapa(etapaRaw);
+    const value = parseFunnelCell(row[2]);
+
+    if (byClient[clientKey].stagesMap[stageKey] !== undefined) {
+      const idx = byClient[clientKey].stagesMap[stageKey];
+      byClient[clientKey].stages[idx].value = value;
+    } else {
+      byClient[clientKey].stagesMap[stageKey] = byClient[clientKey].stages.length;
+      byClient[clientKey].stages.push({
+        label: etapaRaw,
+        value,
+      });
+    }
   }
 
-  const clients = Object.values(COMERCIAL_CLIENTS).map(cfg => {
-    const stageMap = byClient[cfg.id] || {};
-    const stages = cfg.stages.map(label => ({
-      label,
-      value: stageMap[normalizeEtapa(label)] ?? null,
-    }));
+  const clients = clientOrder.map(clientKey => {
+    const cfg = byClient[clientKey];
+    const stages = cfg.stages;
     const withData = stages.filter(s => s.value !== null);
     const overall = withData.length
       ? Math.round(withData.reduce((sum, s) => sum + s.value, 0) / withData.length * 10) / 10
       : null;
+
     return {
       id: cfg.id,
       name: cfg.name,
-      color: cfg.color,
       stages,
       overall,
     };
@@ -913,6 +912,15 @@ async function fetchComercialFromSheets() {
 }
 
 async function fetchComercial() {
+  try {
+    if (fs.existsSync(COMERCIAL_XLSX_PATH)) {
+      const xlsxData = await fetchComercialFromXlsx();
+      if (xlsxData.clients.length) return xlsxData;
+    }
+  } catch (e) {
+    console.error('[Comercial XLSX]', e.message);
+  }
+
   if (COMERCIAL_SPREADSHEET_ID) {
     try {
       return await fetchComercialFromSheets();
@@ -920,12 +928,8 @@ async function fetchComercial() {
       console.error('[Comercial Sheets]', e.message);
     }
   }
-  try {
-    return await fetchComercialFromXlsx();
-  } catch (e) {
-    console.error('[Comercial XLSX]', e.message);
-    return { metadata: { lastUpdated: new Date().toISOString() }, clients: [], hasData: false };
-  }
+
+  return { metadata: { lastUpdated: new Date().toISOString() }, clients: [], hasData: false };
 }
 
 // ─── Rotas ────────────────────────────────────────────────────────────────────
