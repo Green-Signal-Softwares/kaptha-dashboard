@@ -51,7 +51,7 @@ body {
 .carousel-track {
   display: flex;
   flex-direction: row;
-  width: 700vw;
+  width: 500vw;
   height: 100vh;
   transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
 }

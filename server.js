@@ -189,11 +189,11 @@ async function fetchDRE() {
     marketing:           buildSerie(94),
     conhecimento:        buildSerie(101),
     // Resultados
-    resultado:           buildSerie(104),
-    resultadoFinal:      buildSerie(105),
+    resultado:           buildSerie(106),
+    resultadoFinal:      buildSerie(107),
     usoInvestimento:     buildSerie(108),
     capitalGiro:         buildSerie(109),
-    fluxoCaixa:          buildSerie(122),
+    fluxoCaixa:          buildSerie(125),
     fluxoCaixaInadimp:   buildSerie(123),
   };
 
@@ -576,7 +576,7 @@ async function fetchBI() {
   try {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: "'BI 2026'!A1:D20",
+      range: "'BI 2026'!A1:Z20",
     });
     rows = res.data.values || [];
   } catch (e) {
@@ -640,10 +640,15 @@ async function fetchBI() {
     return a - ativos[i - 1] + (cancelados[i] || 0);
   });
 
+  const dispSerie = financials.find(f => /disponib/i.test(f.name));
+  const dispVals  = dispSerie ? dispSerie.values.filter(v => v !== null && !isNaN(v)) : [];
+  const dispCaixaUltimoMes = dispVals.length ? dispVals[dispVals.length - 1] : null;
+
   return {
     metadata:   { lastUpdated: new Date().toISOString() },
     labels,
     financials,
+    dispCaixaUltimoMes,
     ratios: {
       churn, titulosVenc, liquidez,
       avgChurn:    avg3(churn),

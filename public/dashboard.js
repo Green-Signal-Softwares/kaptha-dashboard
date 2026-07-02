@@ -139,23 +139,15 @@ function renderKPIs(data) {
 
   const fat    = s.faturamentoClientes[a][i];
   const cust   = s.custos[a][i];
-  const res    = s.resultado[a][i];
+  const res    = fat - cust;
   const resFin = s.resultadoFinal[a][i];
-  const flux   = s.fluxoCaixa[a][i];
-  const margem = fat > 0 ? (res / fat) * 100 : 0;
-  const m1mrg  = s.faturamentoClientes.total1 > 0 ? (s.resultado.total1 / s.faturamentoClientes.total1) * 100 : 0;
+  const flux   = state.bi?.dispCaixaUltimoMes ?? s.fluxoCaixa[a][i];
 
   setText('valReceita',  fmt(fat));
   setText('valCustos',   fmt(cust));
   setText('valFluxo',    fmt(flux));
   setValWithSign('valResultado',      res);
   setValWithSign('valResultadoFinal', resFin);
-  setText('valMargem', fmtPct(margem));
-  document.getElementById('valMargem').style.color = margem >= 0 ? 'var(--green-l)' : 'var(--red-l)';
-
-  const m1El = document.getElementById('valMargemAno1');
-  m1El.textContent = fmtPct(m1mrg);
-  m1El.className   = 'kpi-value ' + (m1mrg >= 0 ? 'positive' : 'negative');
 
   if (i > 0) {
     const prev = s.faturamentoClientes[a][i - 1];
@@ -250,9 +242,9 @@ function renderEvolutionChart(data, from, to) {
       datalabels:{ display:false } },
     { label:'Res. Operacional', data:res, borderColor:C.blue, backgroundColor:'rgba(59,130,246,0.06)', borderWidth:2, pointRadius:3, pointHoverRadius:6, tension:0.3, fill:true,
       datalabels:{ display:showLabels, anchor:'start', align:'bottom', offset:4, font:{size:9,weight:'700'}, color:C.blueL, formatter:fmtLabel, clamp:true } },
-    { label:'Res. Final (c/ aporte)', data:resFin, borderColor:C.purple, backgroundColor:'rgba(139,92,246,0.05)', borderWidth:2, pointRadius:3, pointHoverRadius:6, tension:0.3, fill:false, borderDash:[5,3],
+    { label:'Res. Final (com. + inv.)', data:resFin, borderColor:C.purple, backgroundColor:'rgba(139,92,246,0.05)', borderWidth:2, pointRadius:3, pointHoverRadius:6, tension:0.3, fill:false, borderDash:[5,3],
       datalabels:{ display:false } },
-    { label:'Fluxo de Caixa', data:flux, borderColor:C.amber, borderWidth:2, pointRadius:3, pointHoverRadius:6, tension:0.3, fill:false, borderDash:[3,2],
+    { label:'Disponibilidade de Caixa', data:flux, borderColor:C.amber, borderWidth:2, pointRadius:3, pointHoverRadius:6, tension:0.3, fill:false, borderDash:[3,2],
       datalabels:{
         display: showLabels,
         anchor: ctx => ctx.raw >= 0 ? 'end' : 'start',
@@ -1115,7 +1107,7 @@ function renderComercialPage(data) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Per-slide durations (ms): todas as telas = 60s
-const SLIDE_INTERVALS = [60000, 60000, 60000, 60000, 60000, 60000, 60000];
+const SLIDE_INTERVALS = [60000, 60000, 60000, 60000, 60000];
 let carouselIndex   = 0;
 let carouselTimer   = null;
 let progressTimer   = null;
@@ -1138,9 +1130,7 @@ function goToSlide(idx) {
   if (carouselIndex === 1 && state.dre)      renderDRE(state.dre, state.range.from, state.range.to);
   if (carouselIndex === 2 && state.clientes) renderClientesPage(state.clientes);
   if (carouselIndex === 3 && state.okr)      renderOKRObjPage(state.okr);
-  if (carouselIndex === 4 && state.okr)      renderOKRKrPage(state.okr);
-  if (carouselIndex === 5 && state.metas)     renderMetasPage(state.metas);
-  if (carouselIndex === 6 && state.comercial) renderComercialPage(state.comercial);
+  if (carouselIndex === 4 && state.comercial) renderComercialPage(state.comercial);
 
   // Re-arm the auto-advance timer with this slide's duration
   clearInterval(carouselTimer);
@@ -1355,11 +1345,9 @@ async function loadComercial() {
 function updateFooterClock() {
   const t = new Date().toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
   setText('footerTime',       t);
-  setText('metasFooterTime',  t);
-  setText('cliFooterTime',    t);
-  setText('okrObjFooterTime', t);
-  setText('okrKrFooterTime',  t);
-  setText('biFooterTime',     t);
+  setText('cliFooterTime',       t);
+  setText('okrObjFooterTime',   t);
+  setText('biFooterTime',       t);
   setText('comercialFooterTime', t);
 }
 
@@ -1373,9 +1361,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupRefreshBtn();
   startCarousel();
 
-  await Promise.all([loadDRE(), loadClientes(), loadMetas(), loadOKR(), loadBI(), loadComercial()]);
+  await Promise.all([loadDRE(), loadClientes(), loadOKR(), loadBI(), loadComercial()]);
 
-  setInterval(() => { loadDRE(); loadClientes(); loadMetas(); loadOKR(); loadBI(); loadComercial(); }, 5 * 60 * 1000);
+  setInterval(() => { loadDRE(); loadClientes(); loadOKR(); loadBI(); loadComercial(); }, 5 * 60 * 1000);
 
   updateFooterClock();
   setInterval(updateFooterClock, 1000);

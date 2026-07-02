@@ -18,9 +18,7 @@
   <button class="c-dot" data-slide="1" title="DRE Gerencial"></button>
   <button class="c-dot" data-slide="2" title="Clientes Assinados"></button>
   <button class="c-dot" data-slide="3" title="OKR · Objetivos"></button>
-  <button class="c-dot" data-slide="4" title="OKR · KRs"></button>
-  <button class="c-dot" data-slide="5" title="Metas Kaptha.AI"></button>
-  <button class="c-dot" data-slide="6" title="Funil Comercial"></button>
+  <button class="c-dot" data-slide="4" title="Funil Comercial"></button>
 </div>
 <button class="global-refresh-btn" id="globalRefreshBtn" title="Atualizar dados agora">↻</button>
 <div class="carousel-progress-wrap">
@@ -153,26 +151,20 @@
       <div class="kpi-card">
         <div class="kpi-label">Resultado Operacional</div>
         <div class="kpi-value" id="valResultado">–</div>
-        <div class="kpi-meta">Fat. – Custos · Margem <strong id="valMargem">–</strong></div>
+        <div class="kpi-meta">Fat. – Custos</div>
         <div class="kpi-bar blue"></div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Resultado Final <span class="kpi-hint">c/ uso do aporte</span></div>
+        <div class="kpi-label">Resultado Final <span class="kpi-hint">comercial + investimentos</span></div>
         <div class="kpi-value" id="valResultadoFinal">–</div>
-        <div class="kpi-meta">linha 105 · considera investimento</div>
+        <div class="kpi-meta">linha 107 · comercial + investimentos</div>
         <div class="kpi-bar purple"></div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Fluxo de Caixa</div>
+        <div class="kpi-label">Disponibilidade de Caixa</div>
         <div class="kpi-value" id="valFluxo">–</div>
-        <div class="kpi-meta">acumulado até o mês</div>
+        <div class="kpi-meta">BI 2026 · último mês</div>
         <div class="kpi-bar amber"></div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Margem Média · Ano 1</div>
-        <div class="kpi-value" id="valMargemAno1">–</div>
-        <div class="kpi-meta">resultado op. / faturamento</div>
-        <div class="kpi-bar teal"></div>
       </div>
     </section>
 
@@ -382,69 +374,6 @@
         <div class="logo-wrap"><img src="logo.png" alt="Kaptha.AI" class="logo-img" /></div>
         <div class="current-month-badge">
           <span class="badge-dot"></span>
-          <span id="okrKrMonthLabel">OKR · 2025/2026</span>
-        </div>
-      </div>
-      <div class="page-title-badge">OKR · Key Results</div>
-      <div class="refresh-info">
-        <span class="refresh-icon">↻</span>
-        <span id="okrKrLastUpdate">–</span>
-      </div>
-    </div>
-
-    <div class="okr-kr-content">
-      <div class="okr-kr-grid" id="okrKrGrid">
-        <!-- Populado pelo dashboard.js -->
-      </div>
-    </div>
-
-    <footer class="footer">
-      <span>Kaptha Lead · OKR 2025/2026</span>
-      <span id="okrKrFooterTime">–</span>
-      <span>Atualização automática a cada 5 minutos</span>
-    </footer>
-  </div><!-- /slide4 OKR KRs -->
-
-
-  <!-- ════════════════════════════════════════════════════════════════
-       SLIDE 5 · METAS KAPTHA.AI
-       ════════════════════════════════════════════════════════════════ -->
-  <div class="slide" id="slide5">
-    <div class="page-header">
-      <div class="brand-area">
-        <div class="logo-wrap"><img src="logo.png" alt="Kaptha.AI" class="logo-img" /></div>
-        <div class="current-month-badge">
-          <span class="badge-dot"></span>
-          <span id="metasMonthLabel">–</span>
-        </div>
-      </div>
-      <div class="page-title-badge">Metas do Mês</div>
-      <div class="refresh-info">
-        <span class="refresh-icon">↻</span>
-        <span id="metasLastUpdate">–</span>
-      </div>
-    </div>
-    <div class="metas-filter-bar" id="metasMonthFilter"></div>
-    <div class="metas-content">
-      <div class="metas-grid" id="metasGrid"></div>
-    </div>
-    <footer class="footer">
-      <span>Kaptha Lead · Metas Kaptha.AI</span>
-      <span id="metasFooterTime">–</span>
-      <span>Atualização automática a cada 5 minutos</span>
-    </footer>
-  </div><!-- /slide5 metas -->
-
-
-  <!-- ════════════════════════════════════════════════════════════════
-       SLIDE 6 · FUNIL COMERCIAL
-       ════════════════════════════════════════════════════════════════ -->
-  <div class="slide" id="slide6">
-    <div class="page-header">
-      <div class="brand-area">
-        <div class="logo-wrap"><img src="logo.png" alt="Kaptha.AI" class="logo-img" /></div>
-        <div class="current-month-badge">
-          <span class="badge-dot"></span>
           <span id="comercialMonthLabel">Funil Comercial</span>
         </div>
       </div>
@@ -466,7 +395,9 @@
       <span id="comercialFooterTime">–</span>
       <span>Atualização automática a cada 5 minutos</span>
     </footer>
-  </div><!-- /slide6 comercial -->
+  </div><!-- /slide4 Funil Comercial -->
+
+
 
 
 </div><!-- /carousel-track -->
