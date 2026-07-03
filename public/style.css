@@ -566,7 +566,7 @@ body {
 /* ── CHARTS ROW ──────────────────────────────────────────────────────────────── */
 .charts-row {
   display: grid;
-  grid-template-columns: 1fr clamp(300px, 28vw, 440px);
+  grid-template-columns: 1fr;
   gap: var(--gap);
   padding: var(--gap) clamp(12px, 2vw, 28px);
   flex: 1;

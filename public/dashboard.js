@@ -335,7 +335,6 @@ function renderDRE(data, from, to) {
   renderKPIs(data);
   renderMetaProgress(data);
   renderEvolutionChart(data, from, to);
-  renderCostPieChart(data, from, to);
   updateTimestamp(data.metadata.lastUpdated, ['lastUpdate']);
 }
 
