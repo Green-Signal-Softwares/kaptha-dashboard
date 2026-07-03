@@ -152,11 +152,12 @@ async function fetchDRE() {
   });
   const sheets = google.sheets({ version: 'v4', auth: await auth.getClient() });
 
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: "'DRE GERENCIAL'!A1:AH200",
-  });
-  const rows = res.data.values || [];
+  const [dreRes, rvRes] = await Promise.all([
+    sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: "'DRE GERENCIAL'!A1:AH200" }),
+    sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: "'RECEITA VARIÁVEL CLIENTES ASSINADOS'!A1:Z20" }),
+  ]);
+  const rows   = dreRes.data.values || [];
+  const rvRows = rvRes.data.values  || [];
 
   // Helper: extrai série mensal + total + pct de uma linha
   function buildSerie(rowNum) {
@@ -245,6 +246,19 @@ async function fetchDRE() {
     if (allRes[i] > 0 && allRes[i+1] > 0 && allRes[i+2] > 0) { sustainableIdx = i; break; }
   }
 
+  // ─── Receita Variável: mês atual ────────────────────────────────────────────
+  // Layout: col1=jun/26(ANO1 idx10), col2=jul/26(idx11), col3=ago/26(idx12),
+  //         col4=TOT ANO1, cols5-17=ANO2 idx0-12, col18=TOT ANO2
+  const rvTotalRow = rvRows.find(r => String(r[0] || '').toUpperCase().trim() === 'TOTAL');
+  let receitaVariavel = null;
+  if (rvTotalRow && currentPeriod) {
+    const { ano, idx } = currentPeriod;
+    let rvCol = null;
+    if (ano === 1 && idx >= 10 && idx <= 12) rvCol = idx - 9;   // 10→1, 11→2, 12→3
+    if (ano === 2)                             rvCol = idx + 5;   // 0→5 … 12→17
+    if (rvCol !== null) receitaVariavel = parseValue(rvTotalRow[rvCol] || '');
+  }
+
   return {
     metadata: {
       lastUpdated:   new Date().toISOString(),
@@ -252,6 +266,7 @@ async function fetchDRE() {
     },
     months: { ano1: ANO1_MONTHS, ano2: ANO2_MONTHS },
     series: data,
+    receitaVariavel,
     burnRunway: {
       burnRateMensal:   Math.round(burnRate),
       investRestante:   Math.round(investRestante),

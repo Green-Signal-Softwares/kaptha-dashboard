@@ -143,9 +143,12 @@ function renderKPIs(data) {
   const resFin = s.resultadoFinal[a][i];
   const flux   = state.bi?.dispCaixaUltimoMes ?? s.fluxoCaixa[a][i];
 
+  const rv = data.receitaVariavel;
+
   setText('valReceita',  fmt(fat));
   setText('valCustos',   fmt(cust));
   setText('valFluxo',    fmt(flux));
+  setText('valReceitaVariavel', rv !== null && rv !== undefined ? fmt(rv) : '–');
   setValWithSign('valResultado',      res);
   setValWithSign('valResultadoFinal', resFin);
 
