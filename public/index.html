@@ -17,8 +17,9 @@
   <button class="c-dot active" data-slide="0" title="BI 2026"></button>
   <button class="c-dot" data-slide="1" title="DRE Gerencial"></button>
   <button class="c-dot" data-slide="2" title="Clientes Assinados"></button>
-  <button class="c-dot" data-slide="3" title="OKR · Objetivos"></button>
-  <button class="c-dot" data-slide="4" title="Funil Comercial"></button>
+  <button class="c-dot" data-slide="3" title="Healthscore"></button>
+  <button class="c-dot" data-slide="4" title="OKR · Objetivos"></button>
+  <button class="c-dot" data-slide="5" title="Funil Comercial"></button>
 </div>
 <button class="global-refresh-btn" id="globalRefreshBtn" title="Atualizar dados agora">↻</button>
 <div class="carousel-progress-wrap">
@@ -329,9 +330,114 @@
 
 
   <!-- ════════════════════════════════════════════════════════════════
-       SLIDE 3 · OKR — OBJETIVOS
+       SLIDE 3 · HEALTHSCORE
        ════════════════════════════════════════════════════════════════ -->
   <div class="slide" id="slide3">
+    <div class="page-header">
+      <div class="brand-area">
+        <div class="logo-wrap"><img src="logo.png" alt="Kaptha.AI" class="logo-img" /></div>
+        <div class="current-month-badge">
+          <span class="badge-dot"></span>
+          <span>Healthscore · Clientes</span>
+        </div>
+      </div>
+      <div class="page-title-badge">Healthscore</div>
+      <div class="refresh-info">
+        <span class="refresh-icon">↻</span>
+        <span id="hsLastUpdate">–</span>
+      </div>
+    </div>
+
+    <!-- Linha 1: status de saúde -->
+    <section class="hs-row">
+      <div class="hs-card hs-green">
+        <div class="hs-label">Clientes Saudáveis</div>
+        <div class="hs-value" id="hsSaudaveis">–</div>
+        <div class="hs-meta">score ≥ 70</div>
+      </div>
+      <div class="hs-card hs-yellow">
+        <div class="hs-label">Em Atenção</div>
+        <div class="hs-value" id="hsAtencao">–</div>
+        <div class="hs-meta">score 40–69</div>
+      </div>
+      <div class="hs-card hs-red">
+        <div class="hs-label">Críticos</div>
+        <div class="hs-value" id="hsCriticos">–</div>
+        <div class="hs-meta">score &lt; 40</div>
+      </div>
+      <div class="hs-card hs-orange">
+        <div class="hs-label">Com Gatilho</div>
+        <div class="hs-value" id="hsGatilho">–</div>
+        <div class="hs-meta">ação urgente</div>
+      </div>
+    </section>
+
+    <!-- Linha 2: notas -->
+    <section class="hs-row">
+      <div class="hs-card">
+        <div class="hs-label">Nota de Relacionamento</div>
+        <div class="hs-value hs-score" id="hsRelacionamento">–</div>
+        <div class="hs-bar-wrap"><div class="hs-bar-fill" id="hsRelacionamentoBar"></div></div>
+      </div>
+      <div class="hs-card">
+        <div class="hs-label">Nota de Performance</div>
+        <div class="hs-value hs-score" id="hsPerformance">–</div>
+        <div class="hs-bar-wrap"><div class="hs-bar-fill" id="hsPerformanceBar"></div></div>
+      </div>
+      <div class="hs-card">
+        <div class="hs-label">Nota de Satisfação</div>
+        <div class="hs-value hs-score" id="hsSatisfacao">–</div>
+        <div class="hs-bar-wrap"><div class="hs-bar-fill" id="hsSatisfacaoBar"></div></div>
+      </div>
+      <div class="hs-card">
+        <div class="hs-label">Nota de Financeiro</div>
+        <div class="hs-value hs-score" id="hsFinanceiro">–</div>
+        <div class="hs-bar-wrap"><div class="hs-bar-fill" id="hsFinanceiroBar"></div></div>
+      </div>
+    </section>
+
+    <!-- Linha 3: métricas de performance -->
+    <section class="hs-row hs-row-3">
+      <div class="hs-card">
+        <div class="hs-label">Verba Gerenciada Mensal</div>
+        <div class="hs-value" id="hsVerba">–</div>
+        <div class="hs-meta">média do período</div>
+      </div>
+      <div class="hs-card">
+        <div class="hs-label">Conversões Mensais</div>
+        <div class="hs-value" id="hsConversoes">–</div>
+        <div class="hs-meta">média do período</div>
+      </div>
+      <div class="hs-card">
+        <div class="hs-label">Custo Médio / Conversão</div>
+        <div class="hs-value" id="hsCustoConv">–</div>
+        <div class="hs-meta">média do período</div>
+      </div>
+    </section>
+
+    <!-- Linha 4: gráfico histórico -->
+    <section class="hs-chart-section">
+      <div class="hs-chart-card">
+        <div class="chart-header">
+          <span class="chart-title">Histórico de Performance</span>
+          <div class="chart-legend" id="hsChartLegend"></div>
+        </div>
+        <div class="hs-chart-wrap"><canvas id="hsChart"></canvas></div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span>Kaptha Lead · Healthscore</span>
+      <span id="hsFooterTime">–</span>
+      <span>Atualização automática a cada 5 minutos</span>
+    </footer>
+  </div><!-- /slide3 Healthscore -->
+
+
+  <!-- ════════════════════════════════════════════════════════════════
+       SLIDE 4 · OKR — OBJETIVOS
+       ════════════════════════════════════════════════════════════════ -->
+  <div class="slide" id="slide4">
     <div class="page-header">
       <div class="brand-area">
         <div class="logo-wrap"><img src="logo.png" alt="Kaptha.AI" class="logo-img" /></div>
@@ -362,9 +468,9 @@
 
 
   <!-- ════════════════════════════════════════════════════════════════
-       SLIDE 4 · OKR — KEY RESULTS
+       SLIDE 5 · FUNIL COMERCIAL
        ════════════════════════════════════════════════════════════════ -->
-  <div class="slide" id="slide4">
+  <div class="slide" id="slide5">
     <div class="page-header">
       <div class="brand-area">
         <div class="logo-wrap"><img src="logo.png" alt="Kaptha.AI" class="logo-img" /></div>

@@ -51,7 +51,7 @@ body {
 .carousel-track {
   display: flex;
   flex-direction: row;
-  width: 500vw;
+  width: 600vw;
   height: 100vh;
   transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -1525,4 +1525,87 @@ body {
 
 @media (max-width: 900px) {
   .comercial-grid { grid-template-columns: 1fr; grid-template-rows: none; }
+}
+
+/* ── Healthscore ────────────────────────────────────────────────────────────── */
+.hs-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--gap);
+  padding: 0 clamp(12px, 2vw, 28px);
+}
+.hs-row-3 { grid-template-columns: repeat(3, 1fr); }
+
+.hs-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: clamp(8px, 0.8vw, 14px) clamp(10px, 1vw, 16px);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.hs-card.hs-green  { border-left: 3px solid var(--green); }
+.hs-card.hs-yellow { border-left: 3px solid #f59e0b; }
+.hs-card.hs-red    { border-left: 3px solid var(--red); }
+.hs-card.hs-orange { border-left: 3px solid #f97316; }
+
+.hs-label {
+  font-size: clamp(10px, 0.75vw, 12px);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+.hs-value {
+  font-size: clamp(22px, 2.2vw, 36px);
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.1;
+}
+.hs-value.hs-score { font-size: clamp(20px, 1.9vw, 30px); color: var(--green-l); }
+.hs-meta {
+  font-size: clamp(9px, 0.65vw, 11px);
+  color: var(--text-dim);
+}
+
+.hs-bar-wrap {
+  height: 4px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.hs-bar-fill {
+  height: 100%;
+  background: var(--green);
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+
+.hs-chart-section {
+  flex: 1;
+  min-height: 0;
+  padding: 0 clamp(12px, 2vw, 28px);
+}
+.hs-chart-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: clamp(8px, 0.8vw, 14px) clamp(10px, 1vw, 16px) clamp(6px, 0.6vw, 10px);
+}
+.hs-chart-wrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+#slide3 {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 0.6vw, 10px);
+  padding-bottom: 0;
 }

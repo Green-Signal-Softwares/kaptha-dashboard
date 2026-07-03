@@ -14,6 +14,7 @@ const state = {
   okr: null,
   bi: null,
   comercial: null,
+  healthscore: null,
   metasSelectedMonths: [], // [] = usa mês atual por padrão
   range: { from: 0, to: 12 },
   activePreset: 'ano1',
@@ -1109,7 +1110,7 @@ function renderComercialPage(data) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Per-slide durations (ms): todas as telas = 60s
-const SLIDE_INTERVALS = [60000, 60000, 60000, 60000, 60000];
+const SLIDE_INTERVALS = [60000, 60000, 60000, 60000, 60000, 60000];
 let carouselIndex   = 0;
 let carouselTimer   = null;
 let progressTimer   = null;
@@ -1128,11 +1129,12 @@ function goToSlide(idx) {
   dots().forEach((d, i) => d.classList.toggle('active', i === carouselIndex));
 
   // Re-render pages when they become visible (ensures chart sizing)
-  if (carouselIndex === 0 && state.bi)       renderBIPage(state.bi);
-  if (carouselIndex === 1 && state.dre)      renderDRE(state.dre, state.range.from, state.range.to);
-  if (carouselIndex === 2 && state.clientes) renderClientesPage(state.clientes);
-  if (carouselIndex === 3 && state.okr)      renderOKRObjPage(state.okr);
-  if (carouselIndex === 4 && state.comercial) renderComercialPage(state.comercial);
+  if (carouselIndex === 0 && state.bi)          renderBIPage(state.bi);
+  if (carouselIndex === 1 && state.dre)         renderDRE(state.dre, state.range.from, state.range.to);
+  if (carouselIndex === 2 && state.clientes)    renderClientesPage(state.clientes);
+  if (carouselIndex === 3 && state.healthscore) renderHealthscorePage(state.healthscore);
+  if (carouselIndex === 4 && state.okr)         renderOKRObjPage(state.okr);
+  if (carouselIndex === 5 && state.comercial)   renderComercialPage(state.comercial);
 
   // Re-arm the auto-advance timer with this slide's duration
   clearInterval(carouselTimer);
@@ -1344,6 +1346,109 @@ async function loadComercial() {
   }
 }
 
+async function loadHealthscore() {
+  try {
+    const data = await fetch('/api/healthscore').then(r => r.json());
+    state.healthscore = data;
+    if (carouselIndex === 3) renderHealthscorePage(data);
+  } catch (err) {
+    console.error('[Healthscore]', err);
+  }
+}
+
+function renderHealthscorePage(data) {
+  if (!data || !data.hasData) return;
+  const { status, notas, metricas, historico } = data;
+
+  // Linha 1: status
+  setText('hsSaudaveis', status.saudaveis ?? '–');
+  setText('hsAtencao',   status.atencao   ?? '–');
+  setText('hsCriticos',  status.criticos  ?? '–');
+  setText('hsGatilho',   status.gatilho   ?? '–');
+
+  // Linha 2: notas + barras
+  const setNota = (id, val) => {
+    setText(id, val !== null ? val : '–');
+    const bar = document.getElementById(id + 'Bar');
+    if (bar) bar.style.width = val !== null ? Math.min(val, 100) + '%' : '0%';
+    const el = document.getElementById(id);
+    if (el) el.style.color = val >= 70 ? 'var(--green-l)' : val >= 40 ? '#f59e0b' : 'var(--red-l)';
+  };
+  setNota('hsRelacionamento', notas.relacionamento);
+  setNota('hsPerformance',    notas.performance);
+  setNota('hsSatisfacao',     notas.satisfacao);
+  setNota('hsFinanceiro',     notas.financeiro);
+
+  // Linha 3: métricas
+  setText('hsVerba',     metricas.verbaMensal      !== null ? fmt(metricas.verbaMensal)      : '–');
+  setText('hsConversoes',metricas.conversoesMensal !== null ? fmtNum(metricas.conversoesMensal) : '–');
+  setText('hsCustoConv', metricas.custoMedioConv   !== null ? fmt(metricas.custoMedioConv)   : '–');
+
+  // Linha 4: gráfico
+  if (!historico || historico.length === 0) return;
+  const labels = historico.map(h => h.label);
+  const verbas  = historico.map(h => h.verba);
+  const convs   = historico.map(h => h.conversoes);
+  const custos  = historico.map(h => h.custoPorConv);
+
+  const showLbls = ctx => {
+    const w = ctx.chart.chartArea?.width;
+    return w ? (w / ctx.dataset.data.length) > 40 : false;
+  };
+
+  const datasets = [
+    { label: 'Verba Gerenciada', data: verbas, borderColor: C.green, backgroundColor: 'rgba(16,185,129,0.07)',
+      borderWidth: 2, pointRadius: 3, tension: 0.3, fill: true, yAxisID: 'y',
+      datalabels: { display: showLbls, anchor:'end', align:'top', offset:4, font:{size:9,weight:'700'}, color:C.greenL, formatter: fmtLabel, clamp:true } },
+    { label: 'Conversões', data: convs, borderColor: C.blue, backgroundColor: 'rgba(59,130,246,0.06)',
+      borderWidth: 2, pointRadius: 3, tension: 0.3, fill: false, yAxisID: 'y',
+      datalabels: { display: false } },
+    { label: 'Custo/Conversão', data: custos, borderColor: C.amber, borderWidth: 2,
+      pointRadius: 3, tension: 0.3, fill: false, yAxisID: 'y2', borderDash: [4,3],
+      datalabels: { display: showLbls, anchor:'end', align:'top', offset:4, font:{size:9,weight:'700'}, color:C.amberL, formatter: fmtLabel, clamp:true } },
+  ];
+
+  makeChart('hsChart', {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 20, right: 8 } },
+      interaction: { mode:'index', intersect:false },
+      plugins: {
+        legend: { display: false },
+        datalabels: { display: false },
+        tooltip: {
+          backgroundColor:'#0f1623', borderColor:'rgba(255,255,255,0.1)', borderWidth:1, padding:10,
+          titleFont:{size:11,weight:'600'}, bodyFont:{size:11},
+          callbacks:{ label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}` },
+        },
+      },
+      scales: {
+        x: { grid:{color:C.grid}, ticks:{font:{size:10},maxRotation:0} },
+        y: {
+          grid:{ color: C.grid }, ticks:{ font:{size:10}, callback: v => fmtShort(v) },
+        },
+        y2: {
+          position:'right', grid:{ display:false },
+          ticks:{ font:{size:10}, callback: v => 'R$' + fmtShort(v) },
+        },
+      },
+    },
+  });
+
+  document.getElementById('hsChartLegend').innerHTML = datasets.map(ds =>
+    `<div class="legend-item"><div class="legend-dot" style="background:${ds.borderColor}"></div><span>${ds.label}</span></div>`
+  ).join('');
+
+  updateTimestamp(data.metadata.lastUpdated, ['hsLastUpdate']);
+}
+
+function fmtNum(v) {
+  if (v == null || isNaN(v)) return '–';
+  return new Intl.NumberFormat('pt-BR').format(Math.round(v));
+}
+
 function updateFooterClock() {
   const t = new Date().toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
   setText('footerTime',       t);
@@ -1351,6 +1456,7 @@ function updateFooterClock() {
   setText('okrObjFooterTime',   t);
   setText('biFooterTime',       t);
   setText('comercialFooterTime', t);
+  setText('hsFooterTime',        t);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1363,9 +1469,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupRefreshBtn();
   startCarousel();
 
-  await Promise.all([loadDRE(), loadClientes(), loadOKR(), loadBI(), loadComercial()]);
+  await Promise.all([loadDRE(), loadClientes(), loadOKR(), loadBI(), loadComercial(), loadHealthscore()]);
 
-  setInterval(() => { loadDRE(); loadClientes(); loadOKR(); loadBI(); loadComercial(); }, 5 * 60 * 1000);
+  setInterval(() => { loadDRE(); loadClientes(); loadOKR(); loadBI(); loadComercial(); loadHealthscore(); }, 5 * 60 * 1000);
 
   updateFooterClock();
   setInterval(updateFooterClock, 1000);

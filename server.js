@@ -10,6 +10,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const SPREADSHEET_ID     = '1zgf41qe7eIMj6jYKVoGZQB7J_mVcvRHXG7tIxvLSFEs';
 const OKR_SPREADSHEET_ID = '1OYYQXdYWIex7sIGM4rIBVMAmaR1tndtaq85utYqL-5o';
+const HS_SPREADSHEET_ID  = '1eU4nl9QDFsdkwpFRayFb6QHh5gGH27IiHeocCIeOydo';
 const COMERCIAL_SPREADSHEET_ID = process.env.COMERCIAL_SPREADSHEET_ID || '';
 const COMERCIAL_XLSX_PATH = process.env.COMERCIAL_XLSX_PATH ||
   path.join(__dirname, 'base_estatica', 'Controle_Comercial_Kaptha_Lead.xlsx');
@@ -21,6 +22,7 @@ let metasCache    = { data: null, ts: 0 };
 let okrCache      = { data: null, ts: 0 };
 let biCache       = { data: null, ts: 0 };
 let comercialCache = { data: null, ts: 0 };
+let hsCache       = { data: null, ts: 0 };
 
 // ─── Utilitários ──────────────────────────────────────────────────────────────
 
@@ -675,6 +677,76 @@ async function fetchBI() {
   };
 }
 
+// ─── Healthscore ─────────────────────────────────────────────────────────────
+
+async function fetchHealthscore() {
+  const auth = new google.auth.GoogleAuth({
+    keyFile: path.join(__dirname, 'credentials.json'),
+    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+  });
+  const sheets = google.sheets({ version: 'v4', auth: await auth.getClient() });
+  const EMPTY = { metadata: { lastUpdated: new Date().toISOString() }, hasData: false };
+
+  let painel, dash, hist;
+  try {
+    [{ data: { values: painel } }, { data: { values: dash } }, { data: { values: hist } }] =
+      await Promise.all([
+        sheets.spreadsheets.values.get({ spreadsheetId: HS_SPREADSHEET_ID, range: "'Painel'!A1:H10" }),
+        sheets.spreadsheets.values.get({ spreadsheetId: HS_SPREADSHEET_ID, range: "'Dashboard'!A10:L20" }),
+        sheets.spreadsheets.values.get({ spreadsheetId: HS_SPREADSHEET_ID, range: "'Histórico de Performance'!A1:D20" }),
+      ]);
+  } catch (e) {
+    console.error('[HS]', e.message);
+    return EMPTY;
+  }
+  painel = painel || []; dash = dash || []; hist = hist || [];
+
+  const pInt  = (rows, ri, ci) => { const v = rows[ri]?.[ci]; return v != null ? parseInt(v) : null; };
+  const pFlt  = (rows, ri, ci) => { const v = rows[ri]?.[ci]; return v != null ? parseFloat(String(v).replace(',','.')) : null; };
+
+  // Painel R5 (index 4): C=saudáveis, D=atenção, E=críticos, F=gatilho
+  const status = {
+    saudaveis: pInt(painel, 4, 2),
+    atencao:   pInt(painel, 4, 3),
+    criticos:  pInt(painel, 4, 4),
+    gatilho:   pInt(painel, 4, 5),
+  };
+
+  // Painel R8 (index 7): B=relacionamento, C=performance, D=satisfação, E=financeiro
+  const notas = {
+    relacionamento: pFlt(painel, 7, 1),
+    performance:    pFlt(painel, 7, 2),
+    satisfacao:     pFlt(painel, 7, 3),
+    financeiro:     pFlt(painel, 7, 4),
+  };
+
+  // Dashboard range starts at row 10 → index 0=R10; R14=index4, R17=index7
+  const verbaMensal      = parseValue(dash[4]?.[11] || '');
+  const conversoesMensal = parseValue(dash[7]?.[11] || '');
+
+  // Histórico R16 (index 15): D = custo médio conversão
+  const custoMedioConv = parseValue(hist[15]?.[3] || '');
+
+  // Histórico gráfico: R2-R13 (indices 1-12), filtrar onde verba > 0
+  const historico = hist.slice(1, 13)
+    .filter(r => r && r[0] && parseValue(r[1] || '') > 0)
+    .map(r => ({
+      label:    r[0],
+      verba:    parseValue(r[1] || ''),
+      conversoes: parseValue(r[2] || ''),
+      custoPorConv: parseValue(r[3] || ''),
+    }));
+
+  return {
+    metadata:  { lastUpdated: new Date().toISOString() },
+    status,
+    notas,
+    metricas:  { verbaMensal, conversoesMensal, custoMedioConv },
+    historico,
+    hasData:   historico.length > 0,
+  };
+}
+
 // ─── OKR Tracker ─────────────────────────────────────────────────────────────
 
 async function fetchOKR() {
@@ -1034,6 +1106,20 @@ app.get('/api/comercial', async (req, res) => {
     res.json(comercialCache.data);
   } catch (err) {
     console.error('[Comercial]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/healthscore', async (req, res) => {
+  const now = Date.now();
+  const force = req.query.force === '1';
+  if (!force && hsCache.data && now - hsCache.ts < CACHE_TTL) return res.json(hsCache.data);
+  try {
+    hsCache.data = await fetchHealthscore();
+    hsCache.ts = now;
+    res.json(hsCache.data);
+  } catch (err) {
+    console.error('[HS]', err.message);
     res.status(500).json({ error: err.message });
   }
 });
