@@ -1889,3 +1889,146 @@ body {
   gap: clamp(6px, 0.6vw, 10px);
   padding-bottom: 0;
 }
+
+/* ── Responsive tweaks: Healthscore, OKR, Funil Comercial ─────────────────── */
+@media (max-width: 900px) {
+  .hs-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .hs-row-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .hs-chart-section {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .okr-obj-content,
+  .okr-kr-content {
+    padding: 8px 10px;
+  }
+
+  .okr-obj-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: none;
+    grid-auto-rows: minmax(170px, auto);
+    gap: 8px;
+    overflow-y: auto;
+    padding-right: 2px;
+  }
+
+  .okr-big-card {
+    padding: 14px 14px;
+    border-radius: 12px;
+  }
+
+  .okr-big-name {
+    -webkit-line-clamp: 2;
+  }
+
+  .comercial-content {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .hs-row,
+  .hs-row-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .hs-card {
+    padding: 10px 12px;
+  }
+
+  .hs-value {
+    font-size: clamp(20px, 8vw, 30px);
+  }
+
+  .hs-value.hs-score {
+    font-size: clamp(18px, 6.5vw, 26px);
+  }
+
+  .hs-chart-section {
+    flex: 0 0 auto;
+    min-height: 250px;
+  }
+
+  .hs-chart-wrap {
+    min-height: 190px;
+  }
+
+  .okr-obj-grid {
+    grid-template-columns: 1fr;
+    grid-auto-rows: minmax(160px, auto);
+    overflow-y: auto;
+  }
+
+  .okr-big-top {
+    gap: 8px;
+  }
+
+  .okr-big-pct {
+    font-size: clamp(24px, 9vw, 34px);
+  }
+
+  .okr-big-pct-label {
+    font-size: 10px;
+  }
+
+  .okr-tbl {
+    min-width: 560px;
+  }
+
+  .okr-kr-grid {
+    overflow: auto;
+  }
+
+  .comercial-card {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .comercial-stage-left {
+    width: 42px;
+  }
+
+  .comercial-stage-right-wrap {
+    width: 56px;
+    gap: 5px;
+  }
+
+  .comercial-stage-shape {
+    height: clamp(24px, 3.2vh, 30px);
+  }
+}
+
+@media (max-width: 480px) {
+  .comercial-head-grid {
+    gap: 6px;
+  }
+
+  .comercial-head-label {
+    letter-spacing: 0.03em;
+  }
+
+  .comercial-winrate {
+    min-width: 68px;
+    padding: 3px 10px;
+  }
+
+  .comercial-stage-left,
+  .comercial-stage-right-wrap {
+    width: 36px;
+  }
+
+  .comercial-stage-link {
+    display: none;
+  }
+}
