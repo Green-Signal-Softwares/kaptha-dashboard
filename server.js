@@ -815,6 +815,34 @@ function cleanStageLabel(s) {
     .trim();
 }
 
+function canonicalStageLabel(rawLabel) {
+  const label = cleanStageLabel(rawLabel);
+  const n = normalizeEtapa(label);
+
+  // Etapa agregada, não entra no funil visual por fase.
+  if (n === 'LEADS→VENDAS') return null;
+
+  if (n.startsWith('META→RECEBIDO') || n.startsWith('META→RECEBIDOS')) return 'Leads';
+  if (n === 'LEADS→CONECTADOS') return 'Conectados';
+  if (n === 'CONECTADOS→QUALIF' || n === 'CONECTADOS→QUALIF.') return 'Qualificados';
+  if (n === 'QUALIF→AGENDADOS' || n === 'QUALIF.→AGENDADOS') return 'Agendados';
+  if (n === 'AGEND→PROPOSTAS' || n === 'AGEND.→PROPOSTAS') return 'Propostas';
+  if (n === 'PROPOSTAS→VENDAS') return 'Vendas';
+  if (n === 'AGEND→REALIZADOS' || n === 'AGEND.→REALIZADOS') return 'Realizados';
+
+  return label;
+}
+
+function parseCountCell(val) {
+  if (val == null || val === '') return null;
+  if (typeof val === 'number') return isNaN(val) ? null : Math.round(val);
+  const s = String(val).trim();
+  if (!s || s === '-' || s === '–' || s === '—') return null;
+  const cleaned = s.replace(/\./g, '').replace(',', '.');
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? null : Math.round(n);
+}
+
 function parseComercialRows(rows) {
   const EMPTY = {
     metadata: { lastUpdated: new Date().toISOString() },
@@ -830,7 +858,7 @@ function parseComercialRows(rows) {
     const row = rows[ri];
     if (!row) continue;
     const clientRaw = String(row[0] || '').trim();
-    const etapaRaw  = cleanStageLabel(row[1] || '');
+    const etapaRaw  = canonicalStageLabel(row[1] || '');
     if (!clientRaw || !etapaRaw) continue;
 
     const clientKey = normalizeKey(clientRaw);
@@ -840,21 +868,34 @@ function parseComercialRows(rows) {
         name: clientRaw,
         stagesMap: {},
         stages: [],
+        qtdLeads: null,
+        winRate: null,
+        qtdVendas: null,
       };
       clientOrder.push(clientKey);
     }
 
     const stageKey = normalizeEtapa(etapaRaw);
+
     const value = parseFunnelCell(row[2]);
+    const stageQuantity = parseCountCell(row[3]);
+    const winRate = parseFunnelCell(row[4]);
+    const qtdVendas = parseCountCell(row[5]);
+
+    if (stageQuantity !== null) byClient[clientKey].qtdLeads = stageQuantity;
+    if (winRate !== null) byClient[clientKey].winRate = winRate;
+    if (qtdVendas !== null) byClient[clientKey].qtdVendas = qtdVendas;
 
     if (byClient[clientKey].stagesMap[stageKey] !== undefined) {
       const idx = byClient[clientKey].stagesMap[stageKey];
       byClient[clientKey].stages[idx].value = value;
+      byClient[clientKey].stages[idx].quantity = stageQuantity;
     } else {
       byClient[clientKey].stagesMap[stageKey] = byClient[clientKey].stages.length;
       byClient[clientKey].stages.push({
         label: etapaRaw,
         value,
+        quantity: stageQuantity,
       });
     }
   }
@@ -867,9 +908,42 @@ function parseComercialRows(rows) {
       ? Math.round(withData.reduce((sum, s) => sum + s.value, 0) / withData.length * 10) / 10
       : null;
 
+    if (cfg.winRate === null) {
+      const totalConv = stages.find(s => normalizeEtapa(s.label).includes('LEADS→VENDAS'));
+      if (totalConv?.value !== null && totalConv?.value !== undefined) cfg.winRate = totalConv.value;
+      else cfg.winRate = overall;
+    }
+
+    if (cfg.qtdLeads !== null) {
+      let rolling = cfg.qtdLeads;
+      for (const stage of stages) {
+        if (stage.quantity !== null && stage.quantity !== undefined) {
+          rolling = stage.quantity;
+          continue;
+        }
+        if (rolling === null || rolling === undefined) continue;
+        const etapaNorm = normalizeEtapa(stage.label);
+        if (etapaNorm.startsWith('META')) {
+          stage.quantity = rolling;
+          continue;
+        }
+        if (stage.value !== null && stage.value !== undefined) {
+          rolling = Math.max(0, Math.round(rolling * (stage.value / 100)));
+          stage.quantity = rolling;
+        }
+      }
+    }
+
+    if (cfg.qtdVendas === null && cfg.qtdLeads !== null && cfg.winRate !== null) {
+      cfg.qtdVendas = Math.max(0, Math.round(cfg.qtdLeads * (cfg.winRate / 100)));
+    }
+
     return {
       id: cfg.id,
       name: cfg.name,
+      qtdLeads: cfg.qtdLeads,
+      winRate: cfg.winRate,
+      qtdVendas: cfg.qtdVendas,
       stages,
       overall,
     };

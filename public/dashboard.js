@@ -1034,26 +1034,24 @@ const funnelBarCls = (pct, isMeta) => {
   if (pct === null || pct === undefined) return 'critical';
   if (isMeta) {
     if (pct >= 100) return 'achieved';
-    if (pct >= 70)  return 'good';
-    if (pct >= 40)  return 'mid';
+    if (pct >= 70)  return 'mid';
     return 'critical';
   }
   if (pct >= 70)  return 'achieved';
-  if (pct >= 40)  return 'good';
   if (pct >= 20)  return 'mid';
-  if (pct >= 10)  return 'low';
   return 'critical';
 };
 
 const funnelPctLbl = pct => (pct === null || pct === undefined) ? '–' : pct.toFixed(1) + '%';
-
-const FUNNEL_BAR_COLORS = {
-  achieved: 'var(--green)',
-  good:     'var(--teal)',
-  mid:      'var(--amber)',
-  low:      '#f97316',
-  critical: 'var(--red)',
-};
+const funnelIntLbl = n => (n === null || n === undefined || Number.isNaN(Number(n)))
+  ? '–'
+  : Math.round(Number(n)).toLocaleString('pt-BR');
+const normalizeFunnelStage = s => String(s || '')
+  .toUpperCase()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/\s+/g, '')
+  .trim();
 
 function renderComercialPage(data) {
   const { metadata, clients } = data;
@@ -1072,40 +1070,56 @@ function renderComercialPage(data) {
   grid.innerHTML = visibleClients.map(client => {
     const n = client.stages.length;
     const stepsHtml = client.stages.map((stage, i) => {
-      const isMeta = stage.label.startsWith('META');
+      const isMeta = normalizeFunnelStage(stage.label).startsWith('META');
       const cls    = funnelBarCls(stage.value, isMeta);
-      const pctVis = stage.value !== null ? Math.min(stage.value, 100) : 0;
-      const width  = Math.max(55, 100 - i * (40 / Math.max(n - 1, 1)));
+      const width  = Math.max(46, 100 - i * (42 / Math.max(n - 1, 1)));
+      const isLast = i === (n - 1);
 
       return `
-        <div class="comercial-step">
-          <div class="comercial-step-meta" style="--step-width:${width}%">
-            <span class="comercial-step-label">${esc(stage.label)}</span>
-            <span class="comercial-step-val okr-c-${cls}">${funnelPctLbl(stage.value)}</span>
+        <div class="comercial-stage-block" style="--shape-width:${width}%">
+          <div class="comercial-stage-row">
+            <div class="comercial-stage-left">${funnelIntLbl(stage.quantity)}</div>
+            <div class="comercial-stage-mid">
+              <div class="comercial-stage-shape ${cls}">
+                <span class="comercial-stage-label">${esc(stage.label)}</span>
+              </div>
+            </div>
+            <div class="comercial-stage-right-wrap comercial-stage-right-spacer"></div>
           </div>
-          <div class="comercial-step-bar-wrap" style="--step-width:${width}%">
-            <div class="comercial-step-bar">
-              <div class="comercial-step-fill ${cls}" style="width:${pctVis}%; background:${FUNNEL_BAR_COLORS[cls]}"></div>
+          <div class="comercial-stage-connector${isLast ? ' is-last' : ''}">
+            <div class="comercial-stage-left comercial-stage-left-spacer"></div>
+            <div class="comercial-stage-mid"><div class="comercial-stage-mid-spacer"></div></div>
+            <div class="comercial-stage-right-wrap">
+              <span class="comercial-stage-link"></span>
+              <span class="comercial-stage-right okr-c-${cls}">${funnelPctLbl(stage.value)}</span>
             </div>
           </div>
         </div>`;
     }).join('');
 
-    const overallCls = funnelBarCls(client.overall, false);
+    const overallCls = funnelBarCls(client.winRate ?? client.overall, false);
 
     return `
       <div class="comercial-card">
-        <div class="comercial-card-head">
-          <div>
-            <div class="comercial-client-name">${esc(client.name)}</div>
-            <span class="comercial-client-badge">${n} etapas</span>
+        <div class="comercial-head-grid">
+          <div class="comercial-head-item comercial-head-item-name">
+            <span class="comercial-head-label">Nome</span>
+            <span class="comercial-head-value comercial-head-name">${esc(client.name)}</span>
           </div>
-          <div class="comercial-overall">
-            <span class="comercial-overall-label">Conv. média</span>
-            <span class="comercial-overall-val okr-c-${overallCls}">${funnelPctLbl(client.overall)}</span>
+          <div class="comercial-head-item comercial-head-item-leads">
+            <span class="comercial-head-label">Qtd Leads</span>
+            <span class="comercial-head-value">${funnelIntLbl(client.qtdLeads)}</span>
+          </div>
+          <div class="comercial-head-item comercial-head-item-win">
+            <span class="comercial-head-label">Win Rate</span>
+            <span class="comercial-head-value comercial-winrate comercial-winrate-${overallCls}">${funnelPctLbl(client.winRate ?? client.overall)}</span>
+          </div>
+          <div class="comercial-head-item comercial-head-item-sales">
+            <span class="comercial-head-label">Qtd Vendas</span>
+            <span class="comercial-head-value">${funnelIntLbl(client.qtdVendas)}</span>
           </div>
         </div>
-        <div class="comercial-funnel">${stepsHtml}</div>
+        <div class="comercial-funnel-centered">${stepsHtml}</div>
       </div>`;
   }).join('');
 }
