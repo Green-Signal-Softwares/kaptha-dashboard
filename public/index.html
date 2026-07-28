@@ -8,17 +8,17 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=20" />
+  <link rel="stylesheet" href="style.css?v=21" />
 </head>
 <body>
 
 <!-- ── CAROUSEL OVERLAY CONTROLS ───────────────────────────────────────────── -->
 <div class="carousel-dots" id="carouselDots">
-  <button class="c-dot active" data-slide="0" title="BI 2026"></button>
-  <button class="c-dot" data-slide="1" title="DRE Gerencial"></button>
-  <button class="c-dot" data-slide="2" title="Clientes Assinados"></button>
-  <button class="c-dot" data-slide="3" title="Healthscore"></button>
-  <button class="c-dot" data-slide="4" title="OKR · Objetivos"></button>
+  <button class="c-dot active" data-slide="0" title="SLA Interno"></button>
+  <button class="c-dot" data-slide="1" title="BI 2026"></button>
+  <button class="c-dot" data-slide="2" title="Forecast"></button>
+  <button class="c-dot" data-slide="3" title="Monetização"></button>
+  <button class="c-dot" data-slide="4" title="Healthscore"></button>
   <button class="c-dot" data-slide="5" title="Funil Comercial"></button>
 </div>
 <button class="global-refresh-btn" id="globalRefreshBtn" title="Atualizar dados agora">↻</button>
@@ -31,9 +31,89 @@
 <div class="carousel-track" id="carouselTrack">
 
   <!-- ════════════════════════════════════════════════════════════════
-       SLIDE 0 · BI 2026
+       SLIDE 0 · SLA INTERNO
        ════════════════════════════════════════════════════════════════ -->
   <div class="slide" id="slide0">
+    <div class="page-header">
+      <div class="brand-area">
+        <div class="logo-wrap"><img src="logo.png" alt="Kaptha.AI" class="logo-img" /></div>
+        <div class="current-month-badge">
+          <span class="badge-dot"></span>
+          <span>SLA Interno de Priorização</span>
+        </div>
+      </div>
+      <div class="page-title-badge">SLA Interno</div>
+    </div>
+
+    <div class="sla-content">
+      <div class="sla-grid">
+
+        <!-- P1 — largura total -->
+        <div class="sla-top">
+          <div class="sla-card">
+            <div class="sla-priority-circle sla-p1-circle">P1</div>
+            <div class="sla-card-body">
+              <div class="sla-badge sla-badge-p1">CRÍTICO &nbsp;|&nbsp; REAÇÃO: 20 MIN &nbsp;|&nbsp; RESOLUÇÃO: 1 DIA ÚTIL</div>
+              <ul class="sla-items">
+                <li>OPORTUNIDADE DE GERAÇÃO DE RECEITA</li>
+                <li>PERDA DE RECEITA</li>
+                <li>CHURN</li>
+                <li>INADIMPLÊNCIA D+28</li>
+                <li>TRAVA OPERACIONAL</li>
+                <li>TURNOVER INESPERADO</li>
+                <li>CULTURA EM RISCO</li>
+                <li>META COMPROMETIDA</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- P2 e P3 — metade inferior -->
+        <div class="sla-bottom">
+          <!-- P2 -->
+          <div class="sla-card">
+            <div class="sla-priority-circle sla-p2-circle">P2</div>
+            <div class="sla-card-body">
+              <div class="sla-badge sla-badge-p2">ATENÇÃO &nbsp;|&nbsp; REAÇÃO: NO DIA &nbsp;|&nbsp; RESOLUÇÃO: 2 DIAS ÚTEIS</div>
+              <ul class="sla-items">
+                <li>INSATISFAÇÃO E/OU DESENGAJAMENTO</li>
+                <li>PERFORMANCE PREJUDICADA</li>
+                <li>PLANEJAMENTO ATRASADO</li>
+                <li>INADIMPLÊNCIA</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- P3 -->
+          <div class="sla-card">
+            <div class="sla-priority-circle sla-p3-circle">P3</div>
+            <div class="sla-card-body">
+              <div class="sla-badge sla-badge-p3">IMPORTANTE &nbsp;|&nbsp; REAÇÃO: 1 DIA ÚTIL &nbsp;|&nbsp; RESOLUÇÃO: PLANEJAMENTO</div>
+              <ul class="sla-items">
+                <li>ITENS PRIORIZADOS</li>
+                <li>TREINAMENTOS</li>
+                <li>MELHORIAS DE PROCESSOS</li>
+                <li>AUDITORIAS</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <footer class="footer">
+      <span>Kaptha Lead · SLA Interno</span>
+      <span id="slaFooterTime">–</span>
+      <span>Atualização automática a cada 5 minutos</span>
+    </footer>
+  </div><!-- /slide0 SLA Interno -->
+
+
+  <!-- ════════════════════════════════════════════════════════════════
+       SLIDE 1 · BI 2026
+       ════════════════════════════════════════════════════════════════ -->
+  <div class="slide" id="slide1">
     <div class="page-header">
       <div class="brand-area">
         <div class="logo-wrap"><img src="logo.png" alt="Kaptha.AI" class="logo-img" /></div>
@@ -103,13 +183,13 @@
       <span id="biFooterTime">–</span>
       <span>Atualização automática a cada 5 minutos</span>
     </footer>
-  </div><!-- /slide0 BI 2026 -->
+  </div><!-- /slide1 BI 2026 -->
 
 
   <!-- ════════════════════════════════════════════════════════════════
-       SLIDE 1 · DRE GERENCIAL
+       SLIDE 2 · FORECAST
        ════════════════════════════════════════════════════════════════ -->
-  <div class="slide" id="slide1">
+  <div class="slide" id="slide2">
     <div class="filter-bar">
       <div class="brand-area">
         <div class="logo-wrap"><img src="logo.png" alt="Kaptha.AI" class="logo-img" /></div>
@@ -118,6 +198,7 @@
           <span id="currentMonthLabel">–</span>
         </div>
       </div>
+      <div class="page-title-badge">Forecast</div>
       <div class="filter-presets">
         <span class="filter-label">Período:</span>
         <button class="filter-btn active" data-preset="ano1">ANO 1 <small>ago/25 – ago/26</small></button>
@@ -156,9 +237,9 @@
         <div class="kpi-bar blue"></div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Resultado Final <span class="kpi-hint">comercial + investimentos</span></div>
+        <div class="kpi-label">Resultado Aporte <span class="kpi-hint">aporte – investimentos</span></div>
         <div class="kpi-value" id="valResultadoFinal">–</div>
-        <div class="kpi-meta">linha 107 · comercial + investimentos</div>
+        <div class="kpi-meta">linha 5 – (114+120+123)</div>
         <div class="kpi-bar purple"></div>
       </div>
       <div class="kpi-card">
@@ -231,7 +312,7 @@
     <section class="charts-row">
       <div class="chart-card chart-main">
         <div class="chart-header">
-          <span class="chart-title">Evolução Mensal</span>
+          <span class="chart-title">LTM</span>
           <div class="chart-legend" id="chartLegend"></div>
         </div>
         <div class="chart-wrap"><canvas id="evolutionChart"></canvas></div>
@@ -239,17 +320,17 @@
     </section>
 
     <footer class="footer">
-      <span>Kaptha Lead · Plano Orçamentário</span>
+      <span>Kaptha Lead · Forecast</span>
       <span id="footerTime">–</span>
       <span>Atualização automática a cada 5 minutos</span>
     </footer>
-  </div><!-- /slide1 DRE -->
+  </div><!-- /slide2 Forecast -->
 
 
   <!-- ════════════════════════════════════════════════════════════════
-       SLIDE 2 · CLIENTES ASSINADOS
+       SLIDE 3 · MONETIZAÇÃO
        ════════════════════════════════════════════════════════════════ -->
-  <div class="slide" id="slide2">
+  <div class="slide" id="slide3">
     <div class="page-header">
       <div class="brand-area">
         <div class="logo-wrap"><img src="logo.png" alt="Kaptha.AI" class="logo-img" /></div>
@@ -258,7 +339,7 @@
           <span id="cliMonthLabel">–</span>
         </div>
       </div>
-      <div class="page-title-badge">Análise de Clientes</div>
+      <div class="page-title-badge">Monetização</div>
       <div class="refresh-info">
         <span class="refresh-icon">↻</span>
         <span id="cliLastUpdate">–</span>
@@ -322,17 +403,17 @@
     </section>
 
     <footer class="footer">
-      <span>Kaptha Lead · Clientes Assinados</span>
+      <span>Kaptha Lead · Monetização</span>
       <span id="cliFooterTime">–</span>
       <span>Atualização automática a cada 5 minutos</span>
     </footer>
-  </div><!-- /slide2 clientes -->
+  </div><!-- /slide3 Monetização -->
 
 
   <!-- ════════════════════════════════════════════════════════════════
-       SLIDE 3 · HEALTHSCORE
+       SLIDE 4 · HEALTHSCORE
        ════════════════════════════════════════════════════════════════ -->
-  <div class="slide" id="slide3">
+  <div class="slide" id="slide4">
     <div class="page-header">
       <div class="brand-area">
         <div class="logo-wrap"><img src="logo.png" alt="Kaptha.AI" class="logo-img" /></div>
@@ -431,40 +512,7 @@
       <span id="hsFooterTime">–</span>
       <span>Atualização automática a cada 5 minutos</span>
     </footer>
-  </div><!-- /slide3 Healthscore -->
-
-
-  <!-- ════════════════════════════════════════════════════════════════
-       SLIDE 4 · OKR — OBJETIVOS
-       ════════════════════════════════════════════════════════════════ -->
-  <div class="slide" id="slide4">
-    <div class="page-header">
-      <div class="brand-area">
-        <div class="logo-wrap"><img src="logo.png" alt="Kaptha.AI" class="logo-img" /></div>
-        <div class="current-month-badge">
-          <span class="badge-dot"></span>
-          <span id="okrObjMonthLabel">OKR · 2025/2026</span>
-        </div>
-      </div>
-      <div class="page-title-badge">OKR · Objetivos</div>
-      <div class="refresh-info">
-        <span class="refresh-icon">↻</span>
-        <span id="okrObjLastUpdate">–</span>
-      </div>
-    </div>
-
-    <div class="okr-obj-content">
-      <div class="okr-obj-grid" id="okrObjGrid">
-        <!-- Populado pelo dashboard.js -->
-      </div>
-    </div>
-
-    <footer class="footer">
-      <span>Kaptha Lead · OKR 2025/2026</span>
-      <span id="okrObjFooterTime">–</span>
-      <span>Atualização automática a cada 5 minutos</span>
-    </footer>
-  </div><!-- /slide3 OKR objetivos -->
+  </div><!-- /slide4 Healthscore -->
 
 
   <!-- ════════════════════════════════════════════════════════════════
@@ -506,6 +554,6 @@
 </div><!-- /carousel-wrapper -->
 
 <div class="error-overlay" id="errorOverlay"></div>
-<script src="dashboard.js?v=20"></script>
+<script src="dashboard.js?v=21"></script>
 </body>
 </html>

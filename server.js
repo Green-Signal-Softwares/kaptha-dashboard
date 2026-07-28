@@ -191,6 +191,9 @@ async function fetchDRE() {
     emprestimos:         buildSerie(88),
     marketing:           buildSerie(94),
     conhecimento:        buildSerie(101),
+    marketingExpansao: buildSerie(114),
+    pnd:               buildSerie(120),
+    capexEssencial:    buildSerie(123),
     // Resultados
     resultado:           buildSerie(106),
     resultadoFinal:      buildSerie(107),
@@ -661,18 +664,42 @@ async function fetchBI() {
   const dispVals  = dispSerie ? dispSerie.values.filter(v => v !== null && !isNaN(v)) : [];
   const dispCaixaUltimoMes = dispVals.length ? dispVals[dispVals.length - 1] : null;
 
+  // Exclui mês atual e filtra para últimos 3
+  const nowBI = new Date();
+  const curBILabel = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][nowBI.getMonth()] + '/' + String(nowBI.getFullYear()).slice(2);
+  const bi3Indices = labels.map((_,i)=>i).filter(i => labels[i] !== curBILabel).slice(-3);
+  const bi3Labels = bi3Indices.map(i => labels[i]);
+  const sliceSerie3 = arr => bi3Indices.map(i => arr[i] ?? null);
+
+  const financials3 = financials.map(f => ({ name: f.name, values: sliceSerie3(f.values) }));
+  const churn3      = sliceSerie3(churn);
+  const titulosVenc3= sliceSerie3(titulosVenc);
+  const liquidez3   = sliceSerie3(liquidez);
+  const ativos3     = sliceSerie3(ativos);
+  const cancelados3 = sliceSerie3(cancelados);
+
+  // Último valor não-null de churn (array FULL antes de filtrar)
+  const churnValidos = churn.filter(v => v !== null && !isNaN(v));
+  const lastChurn = churnValidos.length ? churnValidos[churnValidos.length - 1] : null;
+
+  // Último valor > 0 de ativos (array FULL)
+  const ativosValidos = ativos.filter(v => v !== null && !isNaN(v) && v > 0);
+  const contratosAtivosUltimoMes = ativosValidos.length ? ativosValidos[ativosValidos.length - 1] : null;
+
   return {
     metadata:   { lastUpdated: new Date().toISOString() },
-    labels,
-    financials,
+    labels:     bi3Labels,          // ← apenas últimos 3
+    financials: financials3,        // ← apenas últimos 3
     dispCaixaUltimoMes,
+    lastChurn,
+    contratosAtivosUltimoMes,
     ratios: {
-      churn, titulosVenc, liquidez,
+      churn: churn3, titulosVenc: titulosVenc3, liquidez: liquidez3,
       avgChurn:    avg3(churn),
       avgTitulos:  avg3(titulosVenc),
       avgLiquidez: avg3(liquidez),
     },
-    contratos: { ativos, cancelados, vendas },
+    contratos: { ativos: ativos3, cancelados: cancelados3, vendas: sliceSerie3(vendas) },
     hasData: financials.length > 0,
   };
 }
@@ -720,22 +747,20 @@ async function fetchHealthscore() {
     financeiro:     pFlt(painel, 7, 4),
   };
 
-  // Dashboard range starts at row 10 → index 0=R10; R14=index4, R17=index7
-  const verbaMensal      = parseValue(dash[4]?.[11] || '');
-  const conversoesMensal = parseValue(dash[7]?.[11] || '');
+  // Último mês preenchido no histórico (verba > 0)
+  const histData = hist.slice(1, 13).filter(r => r && r[0] && parseValue(r[1] || '') > 0);
+  const lastHist = histData.length ? histData[histData.length - 1] : null;
+  const verbaMensal      = lastHist ? parseValue(lastHist[1] || '') : 0;
+  const conversoesMensal = lastHist ? parseValue(lastHist[2] || '') : 0;
+  const custoMedioConv   = lastHist ? parseValue(lastHist[3] || '') : 0;
 
-  // Histórico R16 (index 15): D = custo médio conversão
-  const custoMedioConv = parseValue(hist[15]?.[3] || '');
-
-  // Histórico gráfico: R2-R13 (indices 1-12), filtrar onde verba > 0
-  const historico = hist.slice(1, 13)
-    .filter(r => r && r[0] && parseValue(r[1] || '') > 0)
-    .map(r => ({
-      label:    r[0],
-      verba:    parseValue(r[1] || ''),
-      conversoes: parseValue(r[2] || ''),
-      custoPorConv: parseValue(r[3] || ''),
-    }));
+  // Histórico gráfico: apenas últimos 3
+  const historico = histData.slice(-3).map(r => ({
+    label:        r[0],
+    verba:        parseValue(r[1] || ''),
+    conversoes:   parseValue(r[2] || ''),
+    custoPorConv: parseValue(r[3] || ''),
+  }));
 
   return {
     metadata:  { lastUpdated: new Date().toISOString() },

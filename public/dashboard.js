@@ -141,7 +141,7 @@ function renderKPIs(data) {
   const fat    = s.faturamentoClientes[a][i];
   const cust   = s.custos[a][i];
   const res    = fat - cust;
-  const resFin = s.resultadoFinal[a][i];
+  const resFin = s.aporte[a][i] - (s.marketingExpansao[a][i] + s.pnd[a][i] + s.capexEssencial[a][i]);
   const flux   = state.bi?.dispCaixaUltimoMes ?? s.fluxoCaixa[a][i];
 
   const rv = data.receitaVariavel;
@@ -208,16 +208,19 @@ function updateMetaCard(num, realizado, projetado, meta) {
   setWidth(`progressReal${num}`, pctReal);
 }
 
-function renderEvolutionChart(data, from, to) {
-  const s          = data.series;
-  const labels     = ALL_MONTHS.slice(from, to + 1).map(m => m.label);
-  const currRelIdx = getCurrentRelIdx(data, from, to);
+function renderEvolutionChart(data, _from, _to) {
+  const s  = data.series;
+  const cp = data.metadata.currentPeriod;
+  const cpAbs = cp ? (cp.ano === 1 ? cp.idx : 13 + cp.idx) : ALL_MONTHS.length - 1;
+  const ltmFrom = Math.max(0, cpAbs - 11);
+  const ltmTo   = cpAbs;
 
-  const fat    = getInRange(s.faturamentoClientes, from, to);
-  const cust   = getInRange(s.custos,              from, to);
-  const res    = getInRange(s.resultado,            from, to);
-  const resFin = getInRange(s.resultadoFinal,       from, to);
-  const flux   = getInRange(s.fluxoCaixa,           from, to);
+  const labels     = ALL_MONTHS.slice(ltmFrom, ltmTo + 1).map(m => m.label);
+  const currRelIdx = cpAbs - ltmFrom;
+
+  const fat  = getInRange(s.faturamentoClientes, ltmFrom, ltmTo);
+  const cust = getInRange(s.custos,              ltmFrom, ltmTo);
+  const flux = getInRange(s.fluxoCaixa,          ltmFrom, ltmTo);
 
   const showLabels = ctx => {
     const w = ctx.chart.chartArea?.width;
@@ -240,23 +243,12 @@ function renderEvolutionChart(data, from, to) {
   };
 
   const datasets = [
-    { label:'Faturamento', data:fat, borderColor:C.green, backgroundColor:'rgba(16,185,129,0.07)', borderWidth:2, pointRadius:3, pointHoverRadius:6, tension:0.3, fill:true,
-      datalabels:{ display:showLabels, anchor:'end', align:'top', offset:4, font:{size:9,weight:'700'}, color:C.greenL, formatter:fmtLabel, clamp:true } },
-    { label:'Custos', data:cust, borderColor:C.red, backgroundColor:'rgba(239,68,68,0.04)', borderWidth:2, pointRadius:3, pointHoverRadius:6, tension:0.3, fill:false,
-      datalabels:{ display:false } },
-    { label:'Res. Operacional', data:res, borderColor:C.blue, backgroundColor:'rgba(59,130,246,0.06)', borderWidth:2, pointRadius:3, pointHoverRadius:6, tension:0.3, fill:true,
-      datalabels:{ display:showLabels, anchor:'start', align:'bottom', offset:4, font:{size:9,weight:'700'}, color:C.blueL, formatter:fmtLabel, clamp:true } },
-    { label:'Res. Final (com. + inv.)', data:resFin, borderColor:C.purple, backgroundColor:'rgba(139,92,246,0.05)', borderWidth:2, pointRadius:3, pointHoverRadius:6, tension:0.3, fill:false, borderDash:[5,3],
-      datalabels:{ display:false } },
-    { label:'Disponibilidade de Caixa', data:flux, borderColor:C.amber, borderWidth:2, pointRadius:3, pointHoverRadius:6, tension:0.3, fill:false, borderDash:[3,2],
-      datalabels:{
-        display: showLabels,
-        anchor: ctx => ctx.raw >= 0 ? 'end' : 'start',
-        align:  ctx => ctx.raw >= 0 ? 'top'  : 'bottom',
-        offset: 4,
-        font: { size:9, weight:'700' }, color: C.amberL,
-        formatter: fmtLabel, clamp: true,
-      }},
+    { label:'Faturamento', data:fat, borderColor:C.green, backgroundColor:'rgba(16,185,129,0.07)', borderWidth:2.5, pointRadius:4, pointHoverRadius:7, tension:0.3, fill:true,
+      datalabels:{ display:showLabels, anchor:'end', align:'top', offset:5, font:{size:11,weight:'700'}, color:C.greenL, formatter:fmtLabel, clamp:true } },
+    { label:'Custos', data:cust, borderColor:C.red, backgroundColor:'rgba(239,68,68,0.04)', borderWidth:2.5, pointRadius:4, pointHoverRadius:7, tension:0.3, fill:false,
+      datalabels:{ display:showLabels, anchor:'start', align:'bottom', offset:5, font:{size:11,weight:'700'}, color:C.redL, formatter:fmtLabel, clamp:true } },
+    { label:'Disponibilidade de Caixa', data:flux, borderColor:C.amber, borderWidth:2.5, pointRadius:4, pointHoverRadius:7, tension:0.3, fill:false, borderDash:[3,2],
+      datalabels:{ display:showLabels, anchor:'end', align:'top', offset:5, font:{size:11,weight:'700'}, color:C.amberL, formatter:fmtLabel, clamp:true } },
   ];
 
   makeChart('evolutionChart', {
@@ -265,22 +257,23 @@ function renderEvolutionChart(data, from, to) {
     plugins: [vLinePlugin],
     options: {
       responsive: true, maintainAspectRatio: false,
-      layout: { padding: { top: 22, right: 8 } },
+      layout: { padding: { top: 30, bottom: 15, right: 8 } },
       interaction: { mode:'index', intersect:false },
       plugins: {
         legend: { display:false },
         datalabels: { display:false },
         tooltip: {
           backgroundColor:'#0f1623', borderColor:'rgba(255,255,255,0.1)', borderWidth:1, padding:10,
-          titleFont:{size:11,weight:'600'}, bodyFont:{size:11},
+          titleFont:{size:12,weight:'600'}, bodyFont:{size:12},
           callbacks:{ label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}` },
         },
       },
       scales: {
-        x: { grid:{color:C.grid}, ticks:{font:{size:10},maxRotation:0} },
+        x: { grid:{color:C.grid}, ticks:{font:{size:12},maxRotation:0} },
         y: {
+          grace: '10%',
           grid:{ color: ctx => ctx.tick.value===0 ? 'rgba(255,255,255,0.18)' : C.grid, lineWidth: ctx => ctx.tick.value===0 ? 1.5 : 1 },
-          ticks:{ font:{size:10}, callback: v => fmtShort(v) },
+          ticks:{ font:{size:12}, callback: v => fmtShort(v) },
         },
       },
     },
@@ -349,15 +342,16 @@ function renderClientesPage(data) {
 
   // KPIs
   setText('cliMonthLabel', cp ? `Mês atual: ${cp.fullLabel}` : '–');
-  setText('cliQtd',    summary.qtdAtual);
+  const ativosBI = state.bi?.contratosAtivosUltimoMes;
+  setText('cliQtd', ativosBI !== null && ativosBI !== undefined ? ativosBI : summary.qtdAtual);
   setText('cliTicket', fmt(summary.ticketAtual));
   setText('cliMrr',    fmt(summary.mrr));
 
   const churnEl = document.getElementById('cliChurn');
   if (churnEl) {
-    // Usa média de churn da aba BI 2026 quando disponível
-    const cr = (state.bi?.ratios?.avgChurn !== null && state.bi?.ratios?.avgChurn !== undefined)
-      ? state.bi.ratios.avgChurn
+    // Usa lastChurn (último mês) da aba BI 2026 quando disponível
+    const cr = (state.bi?.lastChurn !== null && state.bi?.lastChurn !== undefined)
+      ? state.bi.lastChurn
       : summary.churnRateMensal;
     churnEl.textContent = cr.toFixed(2) + '%';
     churnEl.className   = 'kpi-value ' + (cr > 5 ? 'negative' : cr > 2 ? '' : 'positive');
@@ -821,7 +815,7 @@ function renderBIPage(data) {
 
   const baseOpts = (scales, tipCb) => ({
     responsive: true, maintainAspectRatio: false,
-    layout: { padding: { top: 22, right: 8 } },
+    layout: { padding: { top: 30, bottom: 15, right: 12 } },
     interaction: { mode: 'index', intersect: false },
     plugins: {
       legend: { display: false }, datalabels: { display: false },
@@ -835,7 +829,7 @@ function renderBIPage(data) {
   });
 
   const xSc  = { grid: { color: C.grid }, ticks: { font: { size: 10 }, maxRotation: 0 } };
-  const ySc  = { grid: { color: C.grid }, ticks: { font: { size: 10 } } };
+  const ySc  = { grid: { color: C.grid }, ticks: { font: { size: 10 } }, grace: '15%' };
 
   const mkLeg = (id, datasets) => {
     const el = document.getElementById(id);
@@ -882,7 +876,7 @@ function renderBIPage(data) {
 
   // ── 3 · Taxas de Churn e Inadimplência ────────────────────────────────────
   const taxasDs = [
-    { ...lineDs('Taxa de Churn', ratios.churn, C.red),
+    { ...lineDs('Churn Mensal', ratios.churn, C.red),
       datalabels: { ...dlOpts(C.redL,   'top',    '%', 11), formatter: v => v !== null ? v.toFixed(1)+'%' : '' } },
     { ...lineDs('Taxa de Inadimplência', ratios.titulosVenc, C.amber),
       datalabels: { ...dlOpts(C.amberL, 'bottom', '%', 11), formatter: v => v !== null ? v.toFixed(2)+'%' : '' } },
@@ -902,7 +896,7 @@ function renderBIPage(data) {
   if (taxasKpi) {
     const fk = (v, s) => v !== null ? v.toFixed(2) + s : 'N/A';
     taxasKpi.innerHTML = [
-      { l: 'Churn méd. 3m',        v: fk(ratios.avgChurn,   '%') },
+      { l: 'Churn Mensal méd. 3m',  v: fk(ratios.avgChurn,   '%') },
       { l: 'Inadimpl. méd. 3m',    v: fk(ratios.avgTitulos, '%') },
     ].map(k => `<div class="bi-kpi-chip">${k.l}: <strong>${k.v}</strong></div>`).join('');
   }
@@ -1143,11 +1137,10 @@ function goToSlide(idx) {
   dots().forEach((d, i) => d.classList.toggle('active', i === carouselIndex));
 
   // Re-render pages when they become visible (ensures chart sizing)
-  if (carouselIndex === 0 && state.bi)          renderBIPage(state.bi);
-  if (carouselIndex === 1 && state.dre)         renderDRE(state.dre, state.range.from, state.range.to);
-  if (carouselIndex === 2 && state.clientes)    renderClientesPage(state.clientes);
-  if (carouselIndex === 3 && state.healthscore) renderHealthscorePage(state.healthscore);
-  if (carouselIndex === 4 && state.okr)         renderOKRObjPage(state.okr);
+  if (carouselIndex === 1 && state.bi)          renderBIPage(state.bi);
+  if (carouselIndex === 2 && state.dre)         renderDRE(state.dre, state.range.from, state.range.to);
+  if (carouselIndex === 3 && state.clientes)    renderClientesPage(state.clientes);
+  if (carouselIndex === 4 && state.healthscore) renderHealthscorePage(state.healthscore);
   if (carouselIndex === 5 && state.comercial)   renderComercialPage(state.comercial);
 
   // Re-arm the auto-advance timer with this slide's duration
@@ -1364,7 +1357,7 @@ async function loadHealthscore() {
   try {
     const data = await fetch('/api/healthscore').then(r => r.json());
     state.healthscore = data;
-    if (carouselIndex === 3) renderHealthscorePage(data);
+    if (carouselIndex === 4) renderHealthscorePage(data);
   } catch (err) {
     console.error('[Healthscore]', err);
   }
@@ -1465,10 +1458,10 @@ function fmtNum(v) {
 
 function updateFooterClock() {
   const t = new Date().toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
-  setText('footerTime',       t);
+  setText('slaFooterTime',       t);
+  setText('footerTime',          t);
   setText('cliFooterTime',       t);
-  setText('okrObjFooterTime',   t);
-  setText('biFooterTime',       t);
+  setText('biFooterTime',        t);
   setText('comercialFooterTime', t);
   setText('hsFooterTime',        t);
 }
@@ -1483,9 +1476,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupRefreshBtn();
   startCarousel();
 
-  await Promise.all([loadDRE(), loadClientes(), loadOKR(), loadBI(), loadComercial(), loadHealthscore()]);
+  await Promise.all([loadDRE(), loadClientes(), loadBI(), loadComercial(), loadHealthscore()]);
 
-  setInterval(() => { loadDRE(); loadClientes(); loadOKR(); loadBI(); loadComercial(); loadHealthscore(); }, 5 * 60 * 1000);
+  setInterval(() => { loadDRE(); loadClientes(); loadBI(); loadComercial(); loadHealthscore(); }, 5 * 60 * 1000);
 
   updateFooterClock();
   setInterval(updateFooterClock, 1000);

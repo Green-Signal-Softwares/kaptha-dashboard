@@ -1883,7 +1883,7 @@ body {
   position: relative;
 }
 
-#slide3 {
+#slide4 {
   display: flex;
   flex-direction: column;
   gap: clamp(6px, 0.6vw, 10px);
@@ -2031,4 +2031,104 @@ body {
   .comercial-stage-link {
     display: none;
   }
+}
+
+/* ─── SLA Page ─────────────────────────────────────────────────────────────── */
+.sla-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: var(--gap) clamp(12px, 2vw, 28px);
+  gap: var(--gap);
+  min-height: 0;
+}
+
+.sla-grid {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: var(--gap);
+  flex: 1;
+  min-height: 0;
+}
+
+.sla-top { grid-column: 1 / -1; }
+
+.sla-bottom {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap);
+}
+
+.sla-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: flex-start;
+  gap: clamp(12px, 1.5vw, 20px);
+  padding: clamp(14px, 1.5vw, 22px);
+  overflow: hidden;
+}
+
+.sla-priority-circle {
+  flex-shrink: 0;
+  width: clamp(56px, 5vw, 80px);
+  height: clamp(56px, 5vw, 80px);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(20px, 2vw, 32px);
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -1px;
+}
+
+.sla-p1-circle { background: radial-gradient(circle at 40% 40%, #c0392b, #8e1a4a); }
+.sla-p2-circle { background: radial-gradient(circle at 40% 40%, #b8860b, #7a6000); }
+.sla-p3-circle { background: radial-gradient(circle at 40% 40%, #1a7a5e, #0d5e47); }
+
+.sla-card-body { flex: 1; min-width: 0; }
+
+.sla-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: clamp(10px, 0.85vw, 13px);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  margin-bottom: clamp(8px, 1vw, 14px);
+  white-space: nowrap;
+}
+
+.sla-badge-p1 { background: #e74c3c; color: #fff; }
+.sla-badge-p2 { background: #f1c40f; color: #1a1a1a; }
+.sla-badge-p3 { background: #2ecc71; color: #1a1a1a; }
+
+.sla-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 4px 16px;
+  list-style: none;
+  margin: 0; padding: 0;
+}
+
+.sla-items li {
+  font-size: clamp(11px, 0.9vw, 14px);
+  font-weight: 600;
+  color: var(--text);
+  padding: 3px 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  letter-spacing: 0.01em;
+}
+
+.sla-items li::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted, var(--text-3));
+  flex-shrink: 0;
 }
