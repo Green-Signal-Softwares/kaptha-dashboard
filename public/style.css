@@ -2045,18 +2045,10 @@ body {
 
 .sla-grid {
   display: grid;
-  grid-template-rows: 1fr 1fr;
+  grid-template-columns: 1.6fr 1fr 1fr;
   gap: var(--gap);
   flex: 1;
   min-height: 0;
-}
-
-.sla-top { grid-column: 1 / -1; }
-
-.sla-bottom {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--gap);
 }
 
 .sla-card {
@@ -2064,21 +2056,32 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   display: flex;
-  align-items: flex-start;
-  gap: clamp(12px, 1.5vw, 20px);
-  padding: clamp(14px, 1.5vw, 22px);
+  flex-direction: column;
+  gap: clamp(12px, 1.2vw, 18px);
+  padding: clamp(18px, 1.8vw, 28px);
   overflow: hidden;
+}
+
+.sla-card-p1 { border-left: 4px solid #e74c3c; }
+.sla-card-p2 { border-left: 4px solid #f1c40f; }
+.sla-card-p3 { border-left: 4px solid #2ecc71; }
+
+.sla-card-header {
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 1.2vw, 18px);
+  flex-wrap: wrap;
 }
 
 .sla-priority-circle {
   flex-shrink: 0;
-  width: clamp(56px, 5vw, 80px);
-  height: clamp(56px, 5vw, 80px);
+  width: clamp(52px, 4.5vw, 72px);
+  height: clamp(52px, 4.5vw, 72px);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(20px, 2vw, 32px);
+  font-size: clamp(18px, 1.8vw, 28px);
   font-weight: 900;
   color: #fff;
   letter-spacing: -1px;
@@ -2088,18 +2091,16 @@ body {
 .sla-p2-circle { background: radial-gradient(circle at 40% 40%, #b8860b, #7a6000); }
 .sla-p3-circle { background: radial-gradient(circle at 40% 40%, #1a7a5e, #0d5e47); }
 
-.sla-card-body { flex: 1; min-width: 0; }
-
 .sla-badge {
   display: inline-flex;
   align-items: center;
-  padding: 5px 14px;
+  padding: 6px 12px;
   border-radius: 20px;
-  font-size: clamp(10px, 0.85vw, 13px);
+  font-size: clamp(8px, 0.68vw, 11px);
   font-weight: 700;
   letter-spacing: 0.03em;
-  margin-bottom: clamp(8px, 1vw, 14px);
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.4;
 }
 
 .sla-badge-p1 { background: #e74c3c; color: #fff; }
@@ -2108,27 +2109,40 @@ body {
 
 .sla-items {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 4px 16px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0;
   list-style: none;
   margin: 0; padding: 0;
+  flex: 1;
+  align-content: space-between;
+}
+
+.sla-card-p2 .sla-items,
+.sla-card-p3 .sla-items {
+  grid-template-columns: 1fr;
 }
 
 .sla-items li {
-  font-size: clamp(11px, 0.9vw, 14px);
+  font-size: clamp(12px, 1vw, 15px);
   font-weight: 600;
   color: var(--text);
-  padding: 3px 0;
+  padding: clamp(10px, 1vw, 16px) 0;
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 10px;
   letter-spacing: 0.01em;
+  border-bottom: 1px solid var(--border);
 }
+
+.sla-items li:last-child { border-bottom: none; }
 
 .sla-items li::before {
   content: '';
-  width: 6px; height: 6px;
+  width: 7px; height: 7px;
   border-radius: 50%;
-  background: var(--text-muted, var(--text-3));
   flex-shrink: 0;
 }
+
+.sla-card-p1 .sla-items li::before { background: #e74c3c; }
+.sla-card-p2 .sla-items li::before { background: #f1c40f; }
+.sla-card-p3 .sla-items li::before { background: #2ecc71; }

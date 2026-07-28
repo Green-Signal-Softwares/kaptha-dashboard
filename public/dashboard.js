@@ -349,9 +349,9 @@ function renderClientesPage(data) {
 
   const churnEl = document.getElementById('cliChurn');
   if (churnEl) {
-    // Usa lastChurn (último mês) da aba BI 2026 quando disponível
-    const cr = (state.bi?.lastChurn !== null && state.bi?.lastChurn !== undefined)
-      ? state.bi.lastChurn
+    // Usa média dos últimos 3 meses do BI 2026 quando disponível
+    const cr = (state.bi?.ratios?.avgChurn !== null && state.bi?.ratios?.avgChurn !== undefined)
+      ? state.bi.ratios.avgChurn
       : summary.churnRateMensal;
     churnEl.textContent = cr.toFixed(2) + '%';
     churnEl.className   = 'kpi-value ' + (cr > 5 ? 'negative' : cr > 2 ? '' : 'positive');
@@ -815,7 +815,7 @@ function renderBIPage(data) {
 
   const baseOpts = (scales, tipCb) => ({
     responsive: true, maintainAspectRatio: false,
-    layout: { padding: { top: 30, bottom: 15, right: 12 } },
+    layout: { padding: { top: 40, bottom: 18, right: 14 } },
     interaction: { mode: 'index', intersect: false },
     plugins: {
       legend: { display: false }, datalabels: { display: false },
@@ -829,7 +829,7 @@ function renderBIPage(data) {
   });
 
   const xSc  = { grid: { color: C.grid }, ticks: { font: { size: 10 }, maxRotation: 0 } };
-  const ySc  = { grid: { color: C.grid }, ticks: { font: { size: 10 } }, grace: '15%' };
+  const ySc  = { grid: { color: C.grid }, ticks: { font: { size: 10 } }, grace: '25%' };
 
   const mkLeg = (id, datasets) => {
     const el = document.getElementById(id);
