@@ -220,7 +220,19 @@ function renderEvolutionChart(data, _from, _to) {
 
   const fat  = getInRange(s.faturamentoClientes, ltmFrom, ltmTo);
   const cust = getInRange(s.custos,              ltmFrom, ltmTo);
-  const flux = getInRange(s.fluxoCaixa,          ltmFrom, ltmTo);
+
+  // Disponibilidade de Caixa: prioritiza BI 2026, fallback para DRE linha 125
+  let flux;
+  const biDisp = state.bi?.dispCaixaFull;
+  if (biDisp && biDisp.labels.length) {
+    const biLabelsLower = biDisp.labels.map(l => l.toLowerCase());
+    flux = ALL_MONTHS.slice(ltmFrom, ltmTo + 1).map(m => {
+      const idx = biLabelsLower.indexOf(m.label.toLowerCase());
+      return idx >= 0 ? biDisp.values[idx] : null;
+    });
+  } else {
+    flux = getInRange(s.fluxoCaixa, ltmFrom, ltmTo);
+  }
 
   const showLabels = ctx => {
     const w = ctx.chart.chartArea?.width;

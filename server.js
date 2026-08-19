@@ -691,6 +691,7 @@ async function fetchBI() {
     labels:     bi3Labels,          // ← apenas últimos 3
     financials: financials3,        // ← apenas últimos 3
     dispCaixaUltimoMes,
+    dispCaixaFull: { labels, values: dispSerie ? dispSerie.values : [] },
     lastChurn,
     contratosAtivosUltimoMes,
     ratios: {
